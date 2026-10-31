@@ -20,45 +20,45 @@ colors:
   late: "#B23B1E"
 typography:
   display:
-    fontFamily: "Schibsted Grotesk, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+    fontFamily: "Urbanist, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
     fontSize: "clamp(26px, 6.2vw, 34px)"
     fontWeight: 600
     lineHeight: 1.12
     letterSpacing: "-0.028em"
   headline:
-    fontFamily: "Schibsted Grotesk, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Urbanist, ui-sans-serif, system-ui, sans-serif"
     fontSize: "24px"
     fontWeight: 600
     letterSpacing: "-0.02em"
   title:
-    fontFamily: "Schibsted Grotesk, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Urbanist, ui-sans-serif, system-ui, sans-serif"
     fontSize: "17px"
     fontWeight: 600
     letterSpacing: "-0.01em"
   body:
-    fontFamily: "Schibsted Grotesk, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Urbanist, ui-sans-serif, system-ui, sans-serif"
     fontSize: "16px"
     fontWeight: 400
     lineHeight: 1.5
     fontFeature: "\"kern\""
   reading:
-    fontFamily: "Schibsted Grotesk, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Urbanist, ui-sans-serif, system-ui, sans-serif"
     fontSize: "17px"
     fontWeight: 400
     lineHeight: 1.65
   label:
-    fontFamily: "Schibsted Grotesk, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Urbanist, ui-sans-serif, system-ui, sans-serif"
     fontSize: "13px"
     fontWeight: 500
   numeral-dial:
-    fontFamily: "Schibsted Grotesk, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Urbanist, ui-sans-serif, system-ui, sans-serif"
     fontSize: "20px"
     fontWeight: 500
     lineHeight: 1.15
     letterSpacing: "-0.02em"
     fontFeature: "\"tnum\""
   numeral-date:
-    fontFamily: "Schibsted Grotesk, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Urbanist, ui-sans-serif, system-ui, sans-serif"
     fontSize: "30px"
     fontWeight: 400
     lineHeight: 1
@@ -174,8 +174,19 @@ The interface is light by commitment; a dark, moody look is out. The system reje
 - Warm grey housing, near-white panels, graphite ink; one orange signal, one olive for done.
 - Round keys for single-press actions (add, check, habit day); 12px-cornered rectangles for text controls.
 - Soft, low, layered shadows with a white inset top edge, like a moulded part catching light.
-- One self-hosted grotesk (Schibsted Grotesk) at weights 400 to 600, tabular numerals for all time.
+- One self-hosted grotesk (Urbanist) at weights 400 to 600, tabular numerals for all time.
 - The week dial: a Monday-to-Sunday tuning scale with an orange needle on the selected day.
+
+## Glass layer (current look)
+
+Added on top of the Braun system, same palette:
+
+- **Sky:** the page top is a soft wash of the Work blue mixed into the warm ground, with blurred white cloud banks and a faint orange haze at the top right; it fades into the ground by mid-screen. Graphite in dark mode.
+- **Glass:** panels, the editor, note cards, chips, the tab bar and the rail are translucent (`--glass`, `--glass-strong`) with a 22px backdrop blur, a bright 1px edge (`--glass-edge`) and a long soft shadow. 26px panel corners.
+- **Type:** Urbanist, self-hosted (`urbanist.woff2`, 300–800). Headings at 500, large numerals at 300. Urbanist has no tabular figures; time columns are fixed-width and left-aligned so their edge stays straight.
+- **Controls:** primary buttons and the round add key are graphite pills (`--ink`); secondary buttons and icon keys are white glass. The active navigation item is a graphite pill.
+- **Week dial:** a fine tick strip, a graphite bar on the selected day and a graphite label above it giving that day's plan count.
+- **Signal:** orange is kept for "now": today's date and the dial's today label.
 
 ## Colors
 
@@ -236,8 +247,8 @@ Interaction tints (`ink-hover`, `signal-hover`, `danger`, `danger-hover`, `late-
 
 ## Typography
 
-**Display Font:** Schibsted Grotesk (self-hosted `schibsted-grotesk.woff2`, variable 400 to 800, preloaded; falls back to ui-sans-serif / system-ui)
-**Body Font:** Schibsted Grotesk
+**Display Font:** Urbanist (self-hosted `schibsted-grotesk.woff2`, variable 400 to 800, preloaded; falls back to ui-sans-serif / system-ui)
+**Body Font:** Urbanist
 **Label/Mono Font:** none distinct; numerals use `tabular-nums`
 
 **Character:** One precise, slightly mechanical grotesk does every job. Tight negative tracking on large sizes and tabular figures give it the feel of a printed control legend.

@@ -1,6 +1,6 @@
 @font-face {
-  font-family: "Schibsted Grotesk"; font-style: normal; font-weight: 400 800; font-display: swap;
-  src: url("schibsted-grotesk.woff2") format("woff2");
+  font-family: "Urbanist"; font-style: normal; font-weight: 300 800; font-display: swap;
+  src: url("urbanist.woff2") format("woff2");
 }
 
 /* Life Organizer — styles.
@@ -50,7 +50,7 @@
   --shadow-key: 0 1px 0 var(--hl) inset, 0 1px 1px var(--shade-soft), 0 3px 6px -3px var(--shade);
   --ease: cubic-bezier(.16, 1, .3, 1);
 
-  --font: "Schibsted Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font: "Urbanist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px;
 }
 
@@ -558,3 +558,126 @@ select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmln
   .cat-chip .cat-dot { margin-right: 6px; }
   .cat-chip b { margin-left: 5px; font-size: 12px; }
 }
+
+/* ================================================================ Glass layer
+   Airy, frosted look on the same palette: a soft sky made from the Work blue and the warm ground,
+   translucent panels with a bright edge and a long soft shadow, light geometric type, graphite pills.
+   Orange still marks "now". */
+:root {
+  --r-panel: 26px;
+  --r-ctl: 14px;
+  --glass: light-dark(rgba(255, 255, 255, .56), rgba(34, 35, 38, .56));
+  --glass-strong: light-dark(rgba(255, 255, 255, .84), rgba(40, 41, 45, .84));
+  --glass-edge: light-dark(rgba(255, 255, 255, .9), rgba(255, 255, 255, .08));
+  --glass-blur: blur(22px) saturate(1.4);
+  --sky: light-dark(color-mix(in srgb, var(--c-work) 24%, var(--ground)), color-mix(in srgb, var(--c-work) 26%, var(--ground)));
+  --cloud: light-dark(rgba(255, 255, 255, .92), rgba(255, 255, 255, .07));
+  --shadow-panel: 0 1px 0 var(--hl) inset, 0 2px 6px -2px var(--shade-soft), 0 28px 56px -32px var(--shade);
+  --shadow-key: 0 1px 0 var(--hl) inset, 0 6px 16px -8px var(--shade);
+}
+body { position: relative; isolation: isolate; font-weight: 450; letter-spacing: .005em; }
+
+/* The sky: base wash plus soft cloud banks, fading into the ground */
+.sky {
+  position: absolute; inset: 0 0 auto 0; height: min(78vh, 680px); z-index: -1; pointer-events: none; overflow: hidden;
+  background: linear-gradient(180deg, var(--sky) 0%, color-mix(in srgb, var(--sky) 55%, var(--ground)) 55%, var(--ground) 100%);
+}
+.sky::before, .sky::after { content: ""; position: absolute; inset: -12% -8%; filter: blur(26px); }
+.sky::before {
+  background:
+    radial-gradient(38% 22% at 18% 34%, var(--cloud), transparent 70%),
+    radial-gradient(30% 16% at 46% 26%, var(--cloud), transparent 72%),
+    radial-gradient(34% 20% at 82% 40%, var(--cloud), transparent 70%),
+    radial-gradient(60% 18% at 50% 62%, var(--cloud), transparent 75%);
+  opacity: .9;
+}
+.sky::after {   /* a faint warm haze, the palette's signal at a whisper */
+  background: radial-gradient(40% 30% at 92% 4%, color-mix(in srgb, var(--signal) 14%, transparent), transparent 70%);
+}
+
+/* Glass surfaces */
+.panel, .editor, .note-item, .tabbar, .cat-chip, .segmented, .quick input, .search, .more .form {
+  background-color: var(--glass); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-edge);   /* colour only: keeps the search field's icon */
+}
+.panel, .editor { box-shadow: var(--shadow-panel); }
+.panel.quiet { background: color-mix(in srgb, var(--glass) 50%, transparent); box-shadow: none; }
+.note-item { box-shadow: 0 10px 24px -18px var(--shade); }
+.note-item.is-open { border-color: var(--ink); }
+.editor-empty { border-color: var(--glass-edge); background: color-mix(in srgb, var(--glass) 40%, transparent); }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .panel, .editor, .note-item, .tabbar, .cat-chip, .segmented, .quick input, .search, .more .form { background-color: var(--glass-strong); }
+}
+
+/* Type: lighter and wider */
+h1 { font-weight: 500; font-size: clamp(30px, 7.4vw, 40px); letter-spacing: -.025em; line-height: 1.08; }
+.sub { font-size: 15.5px; margin-top: 8px; }
+h2, .dial-range { font-size: 18px; font-weight: 600; letter-spacing: -.01em; }
+.agenda-day { font-size: 13px; font-weight: 600; letter-spacing: .01em; }
+.row-title { font-weight: 500; }
+.date-label .big, .flag-when b { font-weight: 300; letter-spacing: -.03em; }
+.date-label .big { font-size: 34px; }
+.flag-when b { font-size: 26px; }
+.dnum { font-weight: 400; font-size: 21px; }
+
+/* Controls: pills, graphite primary, white glass secondary */
+input, select, textarea { background: var(--glass-strong); border-color: var(--glass-edge); border-radius: var(--r-ctl); }
+.editor input, .editor textarea { background: none; }
+.quick input { min-height: 54px; border-radius: 27px; padding: 0 22px; box-shadow: 0 12px 28px -20px var(--shade); }
+.btn { border-radius: 999px; min-height: 50px; padding: 0 22px; box-shadow: 0 10px 22px -12px var(--shade); }
+.btn.ghost { background: var(--glass-strong); border: 1px solid var(--glass-edge); box-shadow: 0 8px 20px -14px var(--shade); }
+.key { background: var(--glass-strong); border: 1px solid var(--glass-edge); box-shadow: var(--shadow-key); }
+.key.ghost { background: var(--glass-strong); border-color: var(--glass-edge); box-shadow: 0 6px 16px -10px var(--shade); color: var(--ink); }
+.key.ghost:hover { background: var(--panel); }
+.dial-nav .key.ghost, .editor-bar .key.ghost { background: transparent; border-color: transparent; box-shadow: none; }
+.key.signal { background: var(--ink); border-color: var(--ink); color: var(--on-ink); box-shadow: 0 10px 22px -10px var(--shade); }
+.key.signal:hover { background: var(--ink-hover); }
+.quick .key { width: 54px; height: 54px; }
+.pill-btn { background: var(--glass-strong); border-color: var(--glass-edge); }
+.segmented { padding: 4px; border-radius: 999px; }
+.segmented button { border-radius: 999px; }
+.segmented button[aria-pressed="true"] { background: var(--ink); color: var(--on-ink); box-shadow: none; }
+.cat-chip[aria-pressed="true"] { background: color-mix(in srgb, var(--c) 12%, var(--glass-strong)); border-color: var(--glass-edge); }
+.tag { background: color-mix(in srgb, var(--glass-strong) 70%, transparent); border-color: var(--glass-edge); }
+.check { background: var(--glass-strong); }
+.hkey { background: var(--glass-strong); }
+
+/* Navigation */
+.tabbar { border-width: 1px 0 0; border-radius: 26px 26px 0 0; background: var(--glass-strong); box-shadow: 0 -12px 30px -24px var(--shade); }
+.tabbar a { color: var(--ink-3); }
+.tabbar a[aria-current="page"] { color: var(--ink); font-weight: 600; }
+.tabbar a[aria-current="page"]::before { display: none; }
+.tabbar a[aria-current="page"] .icon { stroke-width: 2.2; }
+@media (min-width: 600px) {
+  .rail { background: var(--glass); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); border-right: 1px solid var(--glass-edge); }
+  .nav a[aria-current="page"] { background: var(--ink); color: var(--on-ink); box-shadow: 0 10px 20px -12px var(--shade); }
+  .nav a:hover { background: var(--glass-strong); }
+}
+
+/* The week dial: a fine tick strip, a graphite bar on the selected day, a dark label above it */
+.dial { margin-top: 4px; }
+.dial .dial-head { margin-bottom: 46px; }   /* room for the needle's label */
+.cal .dial-head { margin-bottom: var(--s3); }
+.scale { background: color-mix(in srgb, var(--sunk) 55%, transparent); box-shadow: none; border-radius: 16px; }
+.scale::before { background: repeating-linear-gradient(90deg, var(--tick) 0 1px, transparent 1px calc(100% / 48)); height: 10px; opacity: .8; }
+.day::before { height: 16px; width: 1px; margin-left: -.5px; background: var(--ink-3); }
+.needle { height: 30px; }
+.needle::before { width: 10px; height: 30px; margin-left: -5px; border-radius: 0 0 5px 5px; background: var(--ink); }
+.needle::after { display: none; }
+.needle .tip {
+  position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%); white-space: nowrap;
+  padding: 5px 11px; border-radius: 999px; background: var(--ink); color: var(--on-ink);
+  font-size: 12.5px; font-weight: 600; letter-spacing: .01em; box-shadow: 0 8px 18px -10px var(--shade);
+}
+.needle .tip::after { content: ""; position: absolute; left: 50%; top: 100%; width: 1.5px; height: 8px; margin-left: -.75px; background: var(--ink); }
+.day[aria-pressed="true"] .dnum { color: var(--ink); font-weight: 600; }
+.day.is-today .dname { color: var(--signal-ink); }
+
+/* Calendar on glass */
+.cal-grid { background: color-mix(in srgb, var(--line) 70%, transparent); border-color: var(--glass-edge); border-radius: 18px; }
+.cal-day { background: var(--glass-strong); }
+.cal-day.out { background: color-mix(in srgb, var(--glass-strong) 55%, transparent); }
+.cal-day[aria-pressed="true"] { background: var(--panel); box-shadow: inset 0 0 0 2px var(--ink); }
+
+/* Toast */
+.toast { padding: 12px 18px; }

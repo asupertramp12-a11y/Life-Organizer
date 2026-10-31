@@ -7,7 +7,7 @@
 
   /* ------------------------------------------------------------------ Storage */
   var KEY = 'lo:data:v1';
-  var APP_VERSION = '18';
+  var APP_VERSION = '19';
   var EMPTY = function () { return { v: 1, tasks: [], habits: [], events: [], notes: [], ack: {} }; };
 
   function normalise(d) {
@@ -212,7 +212,11 @@
     return n;
   }
 
-  /* The week dial: a tuning scale with a needle on the selected day. */
+  /* The week dial: a tuning scale with a needle on the selected day, labelled with that day's count. */
+  function tipText(d) {
+    var n = shown().filter(function (e) { return occursOn(e, d); }).length;
+    return n ? plural(n, 'plan', 'plans') : 'Free';
+  }
   function weekDays() { var out = []; for (var i = 0; i < 7; i++) out.push(addDays(state.weekStart, i)); return out; }
   function dial() {
     var days = weekDays(), t = today();
@@ -234,7 +238,7 @@
             '<span class="dots">' + cats().filter(function (c) { return dayEvs.some(function (e) { return catOf(e) === c.id; }); }).map(function (c) { return catDot(c.id); }).join('') + '</span>' +
             '<span class="dname">' + esc(fmt(d, { weekday: 'short' })) + '</span><span class="dnum">' + parse(d).getDate() + '</span></button>';
         }).join('') +
-        '<span class="needle" aria-hidden="true"></span>' +
+        '<span class="needle" aria-hidden="true"><span class="tip">' + esc(tipText(state.selDay)) + '</span></span>' +
       '</div></div>';
   }
   function agenda(day, plansOnly) {
@@ -1005,6 +1009,7 @@
     var dialEl = b.closest('.dial');
     dialEl.style.setProperty('--sel', weekDays().indexOf(d));
     dialEl.querySelectorAll('.day').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+    var tip = dialEl.querySelector('.tip'); if (tip) tip.textContent = tipText(d);
     var ag = document.getElementById('agenda');
     if (ag) { ag.innerHTML = agenda(d, ag.hasAttribute('data-plans-only')); ag.style.animation = 'none'; void ag.offsetWidth; ag.style.animation = ''; }
     var dateInput = document.querySelector('[data-form="event"] input[name="date"]');

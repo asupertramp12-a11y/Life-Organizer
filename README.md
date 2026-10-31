@@ -37,7 +37,7 @@ Never commit backup files to this repository. `.gitignore` blocks `life-organize
 ## Files
 
 Plain HTML, CSS and JavaScript with no build step. All files sit at the top level:
-`index.html`, `app.js`, `styles.css`, `schibsted-grotesk.woff2` (self-hosted font), `manifest.webmanifest`, `logo.svg`, `favicon.svg`, `icon-192.png`, `icon-512.png`. Design notes: `PRODUCT.md`, `DESIGN.md`.
+`index.html`, `app.js`, `styles.css`, `urbanist.woff2` (self-hosted font), `manifest.webmanifest`, `logo.svg`, `favicon.svg`, `icon-192.png`, `icon-512.png`. Design notes: `PRODUCT.md`, `DESIGN.md`.
 
 Run locally: `python3 -m http.server` and open http://localhost:8000.
 
