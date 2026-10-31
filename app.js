@@ -7,7 +7,7 @@
 
   /* ------------------------------------------------------------------ Storage */
   var KEY = 'lo:data:v1';
-  var APP_VERSION = '16';
+  var APP_VERSION = '18';
   var EMPTY = function () { return { v: 1, tasks: [], habits: [], events: [], notes: [], ack: {} }; };
 
   function normalise(d) {
@@ -85,6 +85,7 @@
   /* ------------------------------------------------------------------ Icons (one 1.75 stroke family) */
   var I = {
     today: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+    calendar: '<rect x="3.5" y="4.5" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M9 9.5v11M15 9.5v11M3.5 15h17"/>',
     plans: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
     notes: '<path d="M6 3.5h8.5L19 8v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 19V5a1.5 1.5 0 0 1 1-1.5Z"/><path d="M14 3.5V8h5M8.5 12.5h7M8.5 16h4.5"/>',
     tasks: '<rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
@@ -107,6 +108,7 @@
   /* ------------------------------------------------------------------ Routing */
   var ROUTES = [
     { id: 'today', label: 'Today' },
+    { id: 'calendar', label: 'Calendar' },
     { id: 'plans', label: 'Plans' },
     { id: 'notes', label: 'Notes' },
     { id: 'tasks', label: 'Tasks' },
@@ -125,7 +127,7 @@
   }
   function renderNav(cur) {
     document.getElementById('nav').innerHTML = ROUTES.map(function (r) { return navLink(r, cur); }).join('');
-    document.getElementById('nav-foot').innerHTML = navLink(ALL[5], cur);
+    document.getElementById('nav-foot').innerHTML = navLink(ALL[ALL.length - 1], cur);
     document.getElementById('rail-theme').innerHTML = themeKey();
     document.getElementById('tabbar').innerHTML = ROUTES.map(function (r) { return navLink(r, cur); }).join('');
   }
@@ -192,14 +194,14 @@
   function eventRow(e) {
     var span = spanLabel(e);
     var fl = flagFor(e);
-    var meta = [span, e.place].filter(Boolean).map(esc).join(' · ') + (e.tag ? '<span class="tag">' + esc(e.tag) + '</span>' : '') +
+    var meta = [span, e.place].filter(Boolean).map(esc).join(' · ') + (e.tag && e.tag !== 'Work' ? '<span class="tag">' + esc(e.tag) + '</span>' : '') +   // plain "Work" is said by the blue dot
       (e.who ? '<span class="tag who" title="From ' + esc(e.srcName || '') + '">' + icon('link', 'tiny') + esc(e.who) + '</span>' : '') +
       (e.deadline ? '<span class="tag">Deadline</span>' : '') +
       (e.busy ? '<span class="tag">' + (e.busy === 'free' ? 'Free' : 'Tentative') + '</span>' : '') +
-      (fl ? '<span class="tag ' + fl + '">' + (fl === 'clash' ? 'Clash' : 'Check') + '</span>' : '');
+      (fl ? '<span class="tag ' + (fl === 'check' ? 'chk' : fl) + '">' + (fl === 'clash' ? 'Clash' : 'Check') + '</span>' : '');
     var when = e.time ? esc(e.time) + (e.endTime ? '<small>' + esc(e.endTime) + '</small>' : '') : 'All day';
     return '<li class="row plan' + (span ? ' multi' : '') + '"><span class="time">' + when + '</span>' +
-      '<div class="row-body"><span class="row-title">' + esc(e.title) + '</span>' + (meta ? '<span class="meta">' + meta + '</span>' : '') + '</div>' +
+      '<div class="row-body"><span class="row-title">' + catDot(catOf(e)) + '<span class="visually-hidden">' + esc(catLabel(catOf(e))) + ': </span>' + esc(e.title) + '</span>' + (meta ? '<span class="meta">' + meta + '</span>' : '') + '</div>' +
       (e.src ? '' : del('delete-event', e.id, 'plan: ' + e.title)) + '</li>';
   }
 
@@ -226,10 +228,10 @@
         '<button class="key ghost sm" type="button" data-action="week" data-n="7" aria-label="Next 7 days">' + icon('right') + '</button></span></div>' +
       '<div class="scale" role="group" aria-label="Choose a day">' +
         days.map(function (d) {
-          var n = allEvents().filter(function (e) { return occursOn(e, d); }).length;
+          var dayEvs = shown().filter(function (e) { return occursOn(e, d); }), n = dayEvs.length;
           var fd = flagsOn(d), clash = fd.some(function (f) { return f.sev === 'clash'; });
           return '<button class="day' + (d === t ? ' is-today' : d < t ? ' is-past' : '') + (clash ? ' has-clash' : fd.length ? ' has-check' : '') + '" type="button" data-action="pick-day" data-d="' + d + '" aria-pressed="' + (d === state.selDay) + '" aria-label="' + esc(fmt(d, { weekday: 'long', day: 'numeric', month: 'long' })) + (n ? ', ' + plural(n, 'plan', 'plans') : '') + (fd.length ? ', ' + plural(fd.length, 'flag', 'flags') : '') + '">' +
-            '<span class="dots">' + (n ? '<i></i>'.repeat(Math.min(n, 3)) : '') + '</span>' +
+            '<span class="dots">' + cats().filter(function (c) { return dayEvs.some(function (e) { return catOf(e) === c.id; }); }).map(function (c) { return catDot(c.id); }).join('') + '</span>' +
             '<span class="dname">' + esc(fmt(d, { weekday: 'short' })) + '</span><span class="dnum">' + parse(d).getDate() + '</span></button>';
         }).join('') +
         '<span class="needle" aria-hidden="true"></span>' +
@@ -237,7 +239,7 @@
   }
   function agenda(day, plansOnly) {
     var t = today();
-    var plans = allEvents().filter(function (e) { return occursOn(e, day); }).sort(sortEvents);
+    var plans = shown().filter(function (e) { return occursOn(e, day); }).sort(sortEvents);
     var tasks = plansOnly ? [] : S.tasks.filter(function (x) {
       if (day === t) return (!x.done && x.due && x.due <= t) || (x.done && x.doneAt === t);
       return x.due === day;
@@ -511,6 +513,74 @@
       (oldDiary ? ' Replaced the ' + oldDiary + ' work diary plans loaded earlier.' : '');
   }
 
+  /* ------------------------------------------------------------------ Categories: four sources, four colours
+     Work (Outlook and anything labelled work), Personal (everything you add or import yourself),
+     Douglas (his XP app planner) and Dorothea (her Health app). Hiding a category is display-only:
+     clash checks always look at everything. */
+  function dorotheaName() { var D = readJSON(DH.data) || {}; return (D.child && (D.child.shortName || D.child.name)) || 'Dorothea'; }
+  function cats() {
+    return [{ id: 'work', label: 'Work' }, { id: 'personal', label: 'Personal' }, { id: 'douglas', label: 'Douglas' }, { id: 'dorothea', label: dorotheaName() }];
+  }
+  function catOf(e) {
+    if (e.src === 'xp') return 'douglas';
+    if (e.src === 'health') return 'dorothea';
+    if (e.feed === 'outlook' || isWork(e)) return 'work';
+    return 'personal';
+  }
+  function catLabel(id) { var c = cats().filter(function (x) { return x.id === id; })[0]; return c ? c.label : id; }
+  if (!LINKS.hideCat) LINKS.hideCat = {};
+  function shown() { return allEvents().filter(function (e) { return !LINKS.hideCat[catOf(e)]; }); }
+  function catDot(c) { return '<i class="cat-dot cat-' + c + '" aria-hidden="true"></i>'; }
+  /* Filter chips: tap to show or hide a category. `inRange` limits the counts (e.g. to the month on screen). */
+  function catFilter(inRange) {
+    var list = allEvents().filter(inRange || function () { return true; });
+    return '<div class="cats" role="group" aria-label="Show categories">' + cats().map(function (c) {
+      var n = list.filter(function (e) { return catOf(e) === c.id; }).length, on = !LINKS.hideCat[c.id];
+      return '<button class="cat-chip cat-' + c.id + '" type="button" data-action="toggle-cat" data-c="' + c.id + '" aria-pressed="' + on + '"' +
+        ' aria-label="' + (on ? 'Hide ' : 'Show ') + esc(c.label) + ', ' + n + '">' + catDot(c.id) + '<span>' + esc(c.label) + '</span><b>' + n + '</b></button>';
+    }).join('') + '</div>';
+  }
+
+  /* ------------------------------------------------------------------ Calendar: the unified month */
+  function calMonthStart() { return (state.calMonth || today().slice(0, 7)) + '-01'; }
+  function monthAdd(m, n) { var d = parse(m + '-01'); d.setMonth(d.getMonth() + n); return iso(d).slice(0, 7); }
+  function calendarView() {
+    var t = today(), m0 = calMonthStart(), month = m0.slice(0, 7);
+    var gridStart = monday(m0), last = iso(new Date(parse(m0).getFullYear(), parse(m0).getMonth() + 1, 0));
+    var weeks = Math.ceil((Math.round((parse(last) - parse(gridStart)) / 864e5) + 1) / 7);
+    var evs = shown(), inMonth = function (e) { return e.date <= last && lastDay(e) >= m0; };
+    if (state.selDay.slice(0, 7) !== month) state.selDay = month === t.slice(0, 7) ? t : m0;
+    var dow = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(function (d) { return '<span>' + d + '</span>'; }).join('');
+    var cells = '';
+    for (var i = 0; i < weeks * 7; i++) {
+      var d = addDays(gridStart, i), on = evs.filter(function (e) { return occursOn(e, d); }).sort(function (a, b) {
+        return (a.time ? 1 : 0) - (b.time ? 1 : 0) || sortEvents(a, b); });
+      var fl = flagsOn(d), clash = fl.some(function (f) { return f.sev === 'clash'; });
+      var present = cats().filter(function (c) { return on.some(function (e) { return catOf(e) === c.id; }); });
+      cells += '<button class="cal-day' + (d.slice(0, 7) !== month ? ' out' : '') + (d === t ? ' is-today' : '') + (d < t ? ' is-past' : '') +
+        (clash ? ' has-clash' : fl.length ? ' has-check' : '') + '" type="button" data-action="cal-day" data-d="' + d + '" aria-pressed="' + (d === state.selDay) + '"' +
+        ' aria-label="' + esc(fmt(d, { weekday: 'long', day: 'numeric', month: 'long' })) + ', ' + plural(on.length, 'plan', 'plans') + (fl.length ? ', ' + plural(fl.length, 'flag', 'flags') : '') + '">' +
+        '<span class="cal-num">' + parse(d).getDate() + '</span>' +
+        '<span class="cal-dots">' + present.map(function (c) { return catDot(c.id); }).join('') + '</span>' +
+        '<span class="cal-evs">' + on.slice(0, 4).map(function (e) {
+          var cont = e.date < d;
+          return '<span class="ev cat-' + catOf(e) + (cont ? ' cont' : '') + (e.time ? '' : ' allday') + '">' + (e.time && !cont ? '<time>' + esc(e.time) + '</time>' : '') + esc(e.title) + '</span>';
+        }).join('') + (on.length > 4 ? '<span class="ev more">+' + (on.length - 4) + ' more</span>' : '') + '</span>' +
+        '</button>';
+    }
+    var title = fmt(m0, { month: 'long', year: 'numeric' });
+    return head('Calendar', 'Work, personal, Douglas and ' + esc(dorotheaName()) + ' in one view.') +
+      catFilter(inMonth) +
+      '<div class="split cal-split">' +
+        '<section class="panel cal" aria-labelledby="h-month"><div class="dial-head"><h2 id="h-month" class="dial-range">' + esc(title) + '</h2>' +
+          '<span class="dial-nav"><button class="key ghost sm" type="button" data-action="cal-month" data-n="-1" aria-label="Previous month">' + icon('left') + '</button>' +
+          (month !== t.slice(0, 7) ? '<button class="pill-btn" type="button" data-action="cal-month" data-n="0">Today</button>' : '') +
+          '<button class="key ghost sm" type="button" data-action="cal-month" data-n="1" aria-label="Next month">' + icon('right') + '</button></span></div>' +
+          '<div class="cal-head" aria-hidden="true">' + dow + '</div><div class="cal-grid">' + cells + '</div></section>' +
+        '<section class="panel sticky" aria-labelledby="h-calday"><h2 id="h-calday" class="visually-hidden">Selected day</h2><div id="agenda">' + agenda(state.selDay) + '</div></section>' +
+      '</div>';
+  }
+
   /* ------------------------------------------------------------------ Clash detection
      Work = a plan with a category label, or "(work)" in its title. Everything else is life.
      Each upcoming day is checked; results are cached until the next save. */
@@ -630,7 +700,7 @@
   function flagRow(f) {
     return '<li class="flag sev-' + f.sev + '">' +
       '<span class="flag-when"><b>' + esc(fmt(f.days[0], { day: 'numeric' })) + '</b><small>' + esc(fmt(f.days[0], { month: 'short' })) + '</small></span>' +
-      '<div class="row-body"><span class="flag-head"><span class="tag ' + f.sev + '">' + (f.sev === 'clash' ? 'Clash' : 'Check') + '</span><span class="row-title">' + esc(f.title) + '</span></span>' +
+      '<div class="row-body"><span class="flag-head"><span class="tag ' + (f.sev === 'check' ? 'chk' : f.sev) + '">' + (f.sev === 'clash' ? 'Clash' : 'Check') + '</span><span class="row-title">' + esc(f.title) + '</span></span>' +
         '<span class="meta">' + esc(dayList(f)) + ' · ' + esc(untilLabel(f.days[0])) + '</span>' +
         '<span class="meta">' + esc(f.detail) + '</span>' +
         '<span class="flag-hint">' + esc(f.hint) + '</span>' +
@@ -654,6 +724,7 @@
 
   /* ------------------------------------------------------------------ Views */
   var VIEWS = {
+    calendar: function () { return calendarView(); },
     today: function () {
       var t = today();
       var open = S.tasks.filter(function (x) { return !x.done && x.due && x.due <= t; }).length;
@@ -680,7 +751,7 @@
 
     plans: function () {
       var t = today();
-      var past = allEvents().filter(function (e) { return lastDay(e) < t; }).sort(sortEvents).reverse().slice(0, 8);
+      var past = shown().filter(function (e) { return lastDay(e) < t; }).sort(sortEvents).reverse().slice(0, 8);
       return head('Plans', 'Appointments, birthdays, trips: anything with a date.') +
         '<form class="compose" data-form="event" autocomplete="off">' +
           '<div class="quick"><label class="visually-hidden" for="pt">New plan</label>' +
@@ -693,6 +764,7 @@
             '<label class="field"><span>Ends</span><input type="time" name="endTime"></label>' +
             '<label class="field"><span>Where</span><input name="place" placeholder="Optional"></label>' +
           '</div></details></form>' +
+        catFilter(function (e) { return lastDay(e) >= t; }) +
         '<div class="split plans-split">' +
           '<section class="panel sticky" aria-labelledby="h-week"><h2 id="h-week" class="visually-hidden">Week</h2>' + dial() + '<div id="agenda" data-plans-only>' + agenda(state.selDay, true) + '</div></section>' +
           '<div class="stack">' + headsUp(0, 5) + '<section class="panel" aria-labelledby="h-up"><h2 id="h-up">Coming up</h2><div id="upcoming">' + upcomingList() + '</div></section>' +
@@ -778,7 +850,7 @@
   /* Coming up: every future plan except the day tuned on the dial, which the Week panel already shows. */
   function upcomingList() {
     var t = today(), groups = [], cur = null;
-    allEvents().filter(function (e) { return lastDay(e) >= t && !occursOn(e, state.selDay); }).sort(sortEvents).forEach(function (e) {
+    shown().filter(function (e) { return lastDay(e) >= t && !occursOn(e, state.selDay); }).sort(sortEvents).forEach(function (e) {
       var key = e.date < t ? t : e.date;   // a plan already under way is listed under today
       if (!cur || cur.date !== key) { cur = { date: key, items: [] }; groups.push(cur); } cur.items.push(e);
     });
@@ -906,6 +978,17 @@
         Promise.all(['./', 'index.html', 'app.js?v=' + APP_VERSION, 'styles.css'].map(function (u) { return fetch(u, { cache: 'reload' }).catch(function () {}); }))
           .then(function () { location.reload(); });
         return;
+      case 'toggle-cat':
+        var cid = b.getAttribute('data-c');
+        if (LINKS.hideCat[cid]) delete LINKS.hideCat[cid]; else LINKS.hideCat[cid] = true;
+        saveLinks(); render(); return;
+      case 'cal-day': state.selDay = b.getAttribute('data-d'); render();
+        var ag = document.getElementById('agenda'); if (ag && window.matchMedia('(max-width: 599px)').matches) ag.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      case 'cal-month':
+        var cm = +b.getAttribute('data-n');
+        state.calMonth = cm ? monthAdd(calMonthStart().slice(0, 7), cm) : today().slice(0, 7);
+        render(); return;
       case 'fetch-planner': b.disabled = true; b.textContent = 'Checking…'; fetchPlanner(false); return;
       case 'all-flags': state.allFlags = true; render(); return;
       case 'backup': backup(); return;
