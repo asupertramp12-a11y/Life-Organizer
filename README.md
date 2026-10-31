@@ -17,6 +17,8 @@ Life Organizer also shows activities from the family's other apps, when they're 
 - **Douglas's planner** (XP Reward app): the Family Planner's activities. Life Organizer also checks the family planner online for this week and the next 7, using the family code the XP app saved on the device.
 - **Dorothea's health** (Family Hub): appointments and deadlines.
 
+- **Work calendar** (Outlook): publish your Outlook calendar (Outlook on the web → Settings → Calendar → Shared calendars → Publish a calendar), bookmark its ICS link, and open the bookmark to download `calendar.ics`. Then **Settings → Add from a file**. Each new file replaces the previous Outlook import, so moved and cancelled meetings update. Keep the ICS link private: anyone with it can read your calendar.
+
 This works because all three apps are published under the same GitHub Pages address, so they can read each other's saved data in the browser. Linked activities are read live and never copied; edit them in their own app. Each link can be switched off in **Settings → Linked apps**.
 
 ## Your data stays on your device

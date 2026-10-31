@@ -302,7 +302,10 @@
     if (!LINKS.off.health) out = out.concat(healthEvents());
     return (linkedCache = out);
   }
-  function allEvents() { return S.events.concat(linked()); }
+  function allEvents() {
+    var own = LINKS.off.outlook ? S.events.filter(function (e) { return e.feed !== 'outlook'; }) : S.events;
+    return own.concat(linked());
+  }
 
   /* Firestore REST: fetch Douglas's planner for this week and the next 7. */
   function fsVal(v) {
@@ -354,7 +357,147 @@
         familyCode() ? '<button class="link" type="button" data-action="fetch-planner">Check the family planner now</button>' : '') +
       row('health', esc(name) + '’s health (Family Hub)', !!(readJSON(DH.data) || readJSON(DH.notes)), esc(plural(dhAppts, 'appointment', 'appointments') + ' and ' + plural(dhDead, 'deadline', 'deadlines') + ' coming up.'),
         'Not found in this browser. Open the Health app on this phone and load its data file, then come back.') +
+      row('outlook', 'Work calendar (Outlook)', S.events.some(function (e) { return e.feed === 'outlook'; }),
+        esc(plural(S.events.filter(function (e) { return e.feed === 'outlook' && lastDay(e) >= t; }).length, 'event', 'events') + ' coming up. ') +
+          (LINKS.outlookAt ? 'Updated ' + esc(relDate(iso(new Date(LINKS.outlookAt))).toLowerCase()) + '. ' : '') + 'To refresh, tap your Work calendar bookmark, then Add from a file below.',
+        'Not added yet. Download your published Outlook calendar (calendar.ics), then use Add from a file below.') +
       '</ul>';
+  }
+
+  /* ------------------------------------------------------------------ Outlook calendar (.ics) import
+     A published Outlook calendar downloads as calendar.ics. Importing it replaces the previous
+     Outlook import, so moved meetings move, cancelled ones disappear and new ones appear.
+     Repeating series are expanded from a week ago to 200 days ahead. */
+  var WINZONES = { 'GMT Standard Time': 'Europe/London', 'Greenwich Standard Time': 'Atlantic/Reykjavik', 'UTC': 'UTC',
+    'W. Europe Standard Time': 'Europe/Berlin', 'Romance Standard Time': 'Europe/Paris', 'Central Europe Standard Time': 'Europe/Budapest',
+    'Central European Standard Time': 'Europe/Warsaw', 'GTB Standard Time': 'Europe/Athens', 'E. Europe Standard Time': 'Europe/Chisinau',
+    'FLE Standard Time': 'Europe/Kiev', 'Eastern Standard Time': 'America/New_York', 'Central Standard Time': 'America/Chicago',
+    'Mountain Standard Time': 'America/Denver', 'Pacific Standard Time': 'America/Los_Angeles', 'India Standard Time': 'Asia/Kolkata',
+    'Singapore Standard Time': 'Asia/Singapore', 'AUS Eastern Standard Time': 'Australia/Sydney' };
+  function zoneOffset(tz, utcMs) {   // minutes the zone is ahead of UTC at that instant
+    var p = {}; new Intl.DateTimeFormat('en-GB', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      .formatToParts(new Date(utcMs)).forEach(function (x) { p[x.type] = +x.value; });
+    return (Date.UTC(p.year, p.month - 1, p.day, p.hour % 24, p.minute, p.second) - utcMs) / 6e4;
+  }
+  /* An ICS date-time value -> a Date in this device's time zone, or {date} for all-day values. */
+  function icsWhen(prop) {
+    if (!prop) return null;
+    var v = prop.value, m = v.match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?(Z)?)?$/);
+    if (!m) return null;
+    if (!m[4] || (prop.params.VALUE || '') === 'DATE') return { allDay: true, date: m[1] + '-' + m[2] + '-' + m[3] };
+    var y = +m[1], mo = +m[2] - 1, d = +m[3], h = +m[4], mi = +m[5];
+    var dt;
+    if (m[7]) dt = new Date(Date.UTC(y, mo, d, h, mi));
+    else {
+      var tz = (prop.params.TZID || '').replace(/^"|"$/g, ''), iana = WINZONES[tz] || (/\//.test(tz) ? tz : '');
+      var ok = false; try { if (iana) { new Intl.DateTimeFormat('en-GB', { timeZone: iana }); ok = true; } } catch (e) { ok = false; }
+      if (ok) { var guess = Date.UTC(y, mo, d, h, mi), off = zoneOffset(iana, guess); dt = new Date(guess - off * 6e4); var off2 = zoneOffset(iana, dt.getTime()); if (off2 !== off) dt = new Date(guess - off2 * 6e4); }
+      else dt = new Date(y, mo, d, h, mi);   // floating or unknown zone: take it as local time
+    }
+    return { allDay: false, dt: dt, date: iso(dt), time: pad(dt.getHours()) + ':' + pad(dt.getMinutes()) };
+  }
+  function parseICS(text) {
+    var lines = text.replace(/\r\n/g, '\n').replace(/\n[ \t]/g, '').split('\n'), events = [], cur = null, depth = [];
+    lines.forEach(function (line) {
+      if (/^BEGIN:/i.test(line)) { depth.push(line.slice(6).toUpperCase()); if (depth[depth.length - 1] === 'VEVENT') cur = { props: {} }; return; }
+      if (/^END:/i.test(line)) { if (depth.pop() === 'VEVENT' && cur) { events.push(cur); cur = null; } return; }
+      if (!cur || depth[depth.length - 1] !== 'VEVENT') return;
+      var i = line.indexOf(':'); if (i < 0) return;
+      var head = line.slice(0, i).split(';'), name = head[0].toUpperCase(), params = {};
+      head.slice(1).forEach(function (p) { var j = p.indexOf('='); if (j > 0) params[p.slice(0, j).toUpperCase()] = p.slice(j + 1); });
+      var prop = { value: line.slice(i + 1), params: params };
+      (cur.props[name] = cur.props[name] || []).push(prop);
+    });
+    return events;
+  }
+  function icsText(v) { return (v || '').replace(/\\n/gi, ' ').replace(/\\([,;\\])/g, '$1').trim(); }
+  function first(ev, k) { return ev.props[k] && ev.props[k][0]; }
+  var WD = { SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6 };
+  /* Does `d` (a local date) match the repeat rule that started on `s`? */
+  function ruleHits(rule, s, d) {
+    var a = parse(s), b = parse(d), iv = +(rule.INTERVAL || 1);
+    var days = Math.round((b - a) / 864e5);
+    if (days < 0) return false;
+    var byday = (rule.BYDAY || '').split(',').filter(Boolean);
+    switch (rule.FREQ) {
+      case 'DAILY': return days % iv === 0 && (!byday.length || byday.some(function (x) { return WD[x.slice(-2)] === b.getDay(); }));
+      case 'WEEKLY':
+        var wk = Math.floor((Math.round((parse(monday(d)) - parse(monday(s))) / 864e5)) / 7);
+        if (wk % iv) return false;
+        return byday.length ? byday.some(function (x) { return WD[x.slice(-2)] === b.getDay(); }) : b.getDay() === a.getDay();
+      case 'MONTHLY':
+        var months = (b.getFullYear() - a.getFullYear()) * 12 + b.getMonth() - a.getMonth();
+        if (months % iv) return false;
+        if (rule.BYMONTHDAY) return rule.BYMONTHDAY.split(',').some(function (x) { var n = +x; var dim = new Date(b.getFullYear(), b.getMonth() + 1, 0).getDate(); return (n > 0 ? n : dim + n + 1) === b.getDate(); });
+        if (byday.length) return byday.some(function (x) {
+          var mm = x.match(/^([+-]?\d+)?([A-Z]{2})$/); if (!mm || WD[mm[2]] !== b.getDay()) return false;
+          var n = +(mm[1] || rule.BYSETPOS || 0); if (!n) return true;
+          var dim = new Date(b.getFullYear(), b.getMonth() + 1, 0).getDate();
+          return n > 0 ? Math.ceil(b.getDate() / 7) === n : Math.floor((dim - b.getDate()) / 7) === -n - 1;
+        });
+        return b.getDate() === a.getDate();
+      case 'YEARLY':
+        return (b.getFullYear() - a.getFullYear()) % iv === 0 && b.getMonth() === a.getMonth() && b.getDate() === a.getDate();
+    }
+    return false;
+  }
+  function icsToPlans(text) {
+    var raw = parseICS(text), from = addDays(today(), -7), to = addDays(today(), 200);
+    var overrides = {}, out = [];
+    raw.forEach(function (ev) { var r = first(ev, 'RECURRENCE-ID'); if (r) { var w = icsWhen(r); if (w) overrides[icsText((first(ev, 'UID') || {}).value) + '|' + w.date] = ev; } });
+    function plan(ev, date, uid, spanDays) {
+      var st = icsWhen(first(ev, 'DTSTART')), en = icsWhen(first(ev, 'DTEND'));
+      if (!st) return null;
+      if ((first(ev, 'STATUS') || {}).value === 'CANCELLED' || /^canceled:|^cancelled:/i.test(icsText((first(ev, 'SUMMARY') || {}).value))) return null;
+      var title = icsText((first(ev, 'SUMMARY') || {}).value) || 'Busy';
+      var cats = icsText((first(ev, 'CATEGORIES') || {}).value).split(',')[0];
+      var busy = ((first(ev, 'X-MICROSOFT-CDO-BUSYSTATUS') || {}).value || '').toUpperCase();
+      var p = { id: 'ol:' + uid + ':' + date, title: title, date: date, time: '', place: icsText((first(ev, 'LOCATION') || {}).value).replace(/^Microsoft Teams Meeting$/i, 'Teams'),
+        tag: busy === 'OOF' || /\bleave\b|holiday|out of office/i.test(title) && st.allDay ? 'Leave' : (cats || 'Work'), src: 'outlook', srcName: 'Outlook', feed: 'outlook' };
+      if (st.allDay) { if (spanDays > 1) p.end = addDays(date, spanDays - 1); }
+      else { p.time = st.time; if (en && !en.allDay && en.date === st.date) p.endTime = en.time; else if (en && !en.allDay && en.date > st.date) p.end = addDays(date, Math.round((parse(en.date) - parse(st.date)) / 864e5)); }
+      return p;
+    }
+    raw.forEach(function (ev) {
+      if (first(ev, 'RECURRENCE-ID')) return;   // handled through its series
+      var uid = icsText((first(ev, 'UID') || {}).value) || uidFor(ev);
+      var st = icsWhen(first(ev, 'DTSTART')), en = icsWhen(first(ev, 'DTEND'));
+      if (!st) return;
+      var span = st.allDay && en && en.allDay ? Math.max(1, Math.round((parse(en.date) - parse(st.date)) / 864e5)) : 1;
+      var rr = first(ev, 'RRULE');
+      if (!rr) {
+        if (st.date > to || addDays(st.date, span - 1) < from) return;
+        var one = plan(ev, st.date, uid, span); if (one) out.push(one); return;
+      }
+      if ((first(ev, 'STATUS') || {}).value === 'CANCELLED') return;   // a cancelled series takes its moved instances with it
+      var rule = {}; rr.value.split(';').forEach(function (kv) { var q = kv.split('='); rule[q[0].toUpperCase()] = q[1]; });
+      var until = rule.UNTIL ? icsWhen({ value: rule.UNTIL, params: {} }).date : to;
+      var ex = {}; (ev.props.EXDATE || []).forEach(function (pr) { pr.value.split(',').forEach(function (v) { var w = icsWhen({ value: v, params: pr.params }); if (w) ex[w.date] = true; }); });
+      var count = rule.COUNT ? +rule.COUNT : Infinity, n = 0, guard = 0;
+      for (var d = st.date; d <= until && d <= to && n < count && guard < 4000; d = addDays(d, 1), guard++) {
+        if (!ruleHits(rule, st.date, d)) continue;
+        n++;
+        if (d < from || ex[d]) continue;
+        var o = overrides[uid + '|' + d];
+        var p = o ? plan(o, (icsWhen(first(o, 'DTSTART')) || {}).date || d, uid, span) : plan(ev, d, uid, span);
+        if (p) { if (o) p.id = 'ol:' + uid + ':' + d; out.push(p); }
+      }
+    });
+    return out;
+  }
+  function uidFor(ev) { return 'x' + Math.abs(JSON.stringify(ev.props).split('').reduce(function (h, c) { return (h * 31 + c.charCodeAt(0)) | 0; }, 7)).toString(36); }
+  function importICS(text) {
+    var plans = icsToPlans(text);
+    if (!plans.length) { toast('No events found in that calendar file'); return; }
+    var oldDiary = S.events.filter(function (e) { return /^work-/.test(e.id); });
+    if (oldDiary.length && confirm('Replace the ' + oldDiary.length + ' work diary plans you loaded earlier with your Outlook calendar?')) {
+      S.events = S.events.filter(function (e) { return !/^work-/.test(e.id); });
+    }
+    var before = S.events.filter(function (e) { return e.feed === 'outlook'; }).length;
+    S.events = S.events.filter(function (e) { return e.feed !== 'outlook'; }).concat(plans);
+    LINKS.outlookAt = new Date().toISOString(); saveLinks();
+    save(); render();
+    toast(before ? 'Outlook updated: ' + plural(plans.length, 'event', 'events') : 'Added ' + plural(plans.length, 'Outlook event', 'Outlook events'));
   }
 
   /* ------------------------------------------------------------------ Clash detection
@@ -605,8 +748,8 @@
         '<section class="panel"><h2>Your data</h2><p>Everything is stored on this device only: ' + esc(counts) + '. Back up regularly, and use a backup to copy your data to another phone or computer.</p>' +
           '<div class="actions"><button class="btn" type="button" data-action="backup">Back up to a file</button>' +
           '<label class="btn ghost">Restore from a file<input type="file" accept="application/json,.json" data-input="restore" hidden></label></div></section>' +
-        '<section class="panel"><h2>Add from a file</h2><p>Add plans, tasks, habits and notes from a Life Organizer file without replacing what’s already here. Anything already on this device is skipped.</p>' +
-          '<div class="actions"><label class="btn ghost">Choose a file to add<input type="file" accept="application/json,.json" data-input="merge" hidden></label></div></section>' +
+        '<section class="panel"><h2>Add from a file</h2><p>Add an Outlook calendar file (.ics), or plans, tasks, habits and notes from a Life Organizer file, without replacing what’s already here. Loading a new Outlook file updates your work calendar.</p>' +
+          '<div class="actions"><label class="btn ghost">Choose a file to add<input type="file" accept="application/json,.json,text/calendar,.ics" data-input="merge" hidden></label></div></section>' +
         '<section class="panel"><h2>Install</h2><p><b>Android:</b> open the browser menu and choose <i>Install app</i> or <i>Add to Home screen</i>. <b>iPhone or iPad:</b> in Safari, Share → Add to Home Screen.</p></section>' +
         '<section class="panel"><h2>Start over</h2><p>Erase everything on this device. This can’t be undone, so back up first.</p><button class="btn danger" type="button" data-action="erase">Erase all data</button></section>';
     }
@@ -806,6 +949,7 @@
     if (ev.target.getAttribute('data-input') === 'merge') {
       var mi = ev.target, mf = mi.files[0]; if (!mf) return;
       mf.text().then(function (txt) {
+        if (/^\uFEFF?\s*BEGIN:VCALENDAR/i.test(txt)) { importICS(txt); return; }
         var d = JSON.parse(txt);
         if (!d || d.v !== 1) throw new Error('bad');
         var n = merge(d); save(); render();
