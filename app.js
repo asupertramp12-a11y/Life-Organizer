@@ -165,12 +165,24 @@
     if (ad !== bd) return ad < bd ? -1 : 1;
     return (a.priority || 2) - (b.priority || 2);
   }
+  /* A plan may span days: date is the first day, end (optional) the last. */
+  function lastDay(e) { return e.end && e.end > e.date ? e.end : e.date; }
+  function occursOn(e, d) { return e.date <= d && d <= lastDay(e); }
   function sortEvents(a, b) { var x = a.date + (a.time || ''), y = b.date + (b.time || ''); return x < y ? -1 : x > y ? 1 : 0; }
+  function spanLabel(e) {
+    if (lastDay(e) === e.date) return '';
+    var a = parse(e.date), b = parse(lastDay(e));
+    var days = Math.round((b - a) / 864e5) + 1;
+    return fmt(e.date, { weekday: 'short', day: 'numeric' }) + ' – ' + fmt(lastDay(e), { weekday: 'short', day: 'numeric', month: 'short' }) + ' · ' + days + ' days';
+  }
   function eventRow(e) {
-    return '<li class="row plan"><span class="time">' + (e.time ? esc(e.time) : 'All day') + '</span>' +
-      '<div class="row-body"><span class="row-title">' + esc(e.title) + '</span>' + (e.place ? '<span class="meta">' + esc(e.place) + '</span>' : '') + '</div>' +
+    var span = spanLabel(e);
+    var meta = [span, e.place].filter(Boolean).map(esc).join(' · ');
+    return '<li class="row plan' + (span ? ' multi' : '') + '"><span class="time">' + (e.time ? esc(e.time) : 'All day') + '</span>' +
+      '<div class="row-body"><span class="row-title">' + esc(e.title) + '</span>' + (meta ? '<span class="meta">' + meta + '</span>' : '') + '</div>' +
       del('delete-event', e.id, 'plan: ' + e.title) + '</li>';
   }
+
   function habitStreak(h) {
     var n = 0, d = today();
     if (!h.log[d]) d = addDays(d, -1);
@@ -194,7 +206,7 @@
         '<button class="key ghost sm" type="button" data-action="week" data-n="7" aria-label="Next 7 days">' + icon('right') + '</button></span></div>' +
       '<div class="scale" role="group" aria-label="Choose a day">' +
         days.map(function (d) {
-          var n = S.events.filter(function (e) { return e.date === d; }).length;
+          var n = S.events.filter(function (e) { return occursOn(e, d); }).length;
           return '<button class="day' + (d === t ? ' is-today' : d < t ? ' is-past' : '') + '" type="button" data-action="pick-day" data-d="' + d + '" aria-pressed="' + (d === state.selDay) + '" aria-label="' + esc(fmt(d, { weekday: 'long', day: 'numeric', month: 'long' })) + (n ? ', ' + plural(n, 'plan', 'plans') : '') + '">' +
             '<span class="dots">' + (n ? '<i></i>'.repeat(Math.min(n, 3)) : '') + '</span>' +
             '<span class="dname">' + esc(fmt(d, { weekday: 'short' })) + '</span><span class="dnum">' + parse(d).getDate() + '</span></button>';
@@ -204,7 +216,7 @@
   }
   function agenda(day, plansOnly) {
     var t = today();
-    var plans = S.events.filter(function (e) { return e.date === day; }).sort(sortEvents);
+    var plans = S.events.filter(function (e) { return occursOn(e, day); }).sort(sortEvents);
     var tasks = plansOnly ? [] : S.tasks.filter(function (x) {
       if (day === t) return (!x.done && x.due && x.due <= t) || (x.done && x.doneAt === t);
       return x.due === day;
@@ -221,7 +233,7 @@
     today: function () {
       var t = today();
       var open = S.tasks.filter(function (x) { return !x.done && x.due && x.due <= t; }).length;
-      var plansToday = S.events.filter(function (e) { return e.date === t; }).length;
+      var plansToday = S.events.filter(function (e) { return occursOn(e, t); }).length;
       var habitsLeft = S.habits.filter(function (h) { return !h.log[t]; }).length;
       var sub = [plural(open, 'task due', 'tasks due'), plural(plansToday, 'plan', 'plans')]
         .concat(S.habits.length ? [plural(habitsLeft, 'habit', 'habits') + ' to go'] : []).join(' · ');
@@ -243,16 +255,17 @@
 
     plans: function () {
       var t = today();
-      var past = S.events.filter(function (e) { return e.date < t; }).sort(sortEvents).reverse().slice(0, 8);
+      var past = S.events.filter(function (e) { return lastDay(e) < t; }).sort(sortEvents).reverse().slice(0, 8);
       return head('Plans', 'Appointments, birthdays, trips: anything with a date.') +
         '<form class="compose" data-form="event" autocomplete="off">' +
           '<div class="quick"><label class="visually-hidden" for="pt">New plan</label>' +
             '<input id="pt" name="title" required placeholder="' + esc(planPrompt(state.selDay)) + '" data-autofocus>' +
             '<button class="key signal" type="submit" aria-label="Add plan">' + icon('plus') + '</button></div>' +
-          '<details class="more"><summary>Date, time and place</summary><div class="form">' +
+          '<details class="more"><summary>Dates, time and place</summary><div class="form">' +
             '<label class="field"><span>Date</span><input type="date" name="date" required value="' + esc(state.selDay) + '"></label>' +
+            '<label class="field"><span>Until</span><input type="date" name="end"></label>' +
             '<label class="field"><span>Time</span><input type="time" name="time"></label>' +
-            '<label class="field wide"><span>Where</span><input name="place" placeholder="Optional"></label>' +
+            '<label class="field"><span>Where</span><input name="place" placeholder="Optional"></label>' +
           '</div></details></form>' +
         '<div class="split plans-split">' +
           '<section class="panel sticky" aria-labelledby="h-week"><h2 id="h-week" class="visually-hidden">Week</h2>' + dial() + '<div id="agenda" data-plans-only>' + agenda(state.selDay, true) + '</div></section>' +
@@ -323,6 +336,8 @@
         '<section class="panel"><h2>Your data</h2><p>Everything is stored on this device only: ' + esc(counts) + '. Back up regularly, and use a backup to copy your data to another phone or computer.</p>' +
           '<div class="actions"><button class="btn" type="button" data-action="backup">Back up to a file</button>' +
           '<label class="btn ghost">Restore from a file<input type="file" accept="application/json,.json" data-input="restore" hidden></label></div></section>' +
+        '<section class="panel"><h2>Add from a file</h2><p>Add plans, tasks, habits and notes from a Life Organizer file without replacing what’s already here. Anything already on this device is skipped.</p>' +
+          '<div class="actions"><label class="btn ghost">Choose a file to add<input type="file" accept="application/json,.json" data-input="merge" hidden></label></div></section>' +
         '<section class="panel"><h2>Install</h2><p><b>Android:</b> open the browser menu and choose <i>Install app</i> or <i>Add to Home screen</i>. <b>iPhone or iPad:</b> in Safari, Share → Add to Home Screen.</p></section>' +
         '<section class="panel"><h2>Start over</h2><p>Erase everything on this device. This can’t be undone, so back up first.</p><button class="btn danger" type="button" data-action="erase">Erase all data</button></section>';
     }
@@ -331,10 +346,11 @@
   /* Coming up: every future plan except the day tuned on the dial, which the Week panel already shows. */
   function upcomingList() {
     var t = today(), groups = [], cur = null;
-    S.events.filter(function (e) { return e.date >= t && e.date !== state.selDay; }).sort(sortEvents).forEach(function (e) {
-      if (!cur || cur.date !== e.date) { cur = { date: e.date, items: [] }; groups.push(cur); } cur.items.push(e);
+    S.events.filter(function (e) { return lastDay(e) >= t && !occursOn(e, state.selDay); }).sort(sortEvents).forEach(function (e) {
+      var key = e.date < t ? t : e.date;   // a plan already under way is listed under today
+      if (!cur || cur.date !== key) { cur = { date: key, items: [] }; groups.push(cur); } cur.items.push(e);
     });
-    if (!groups.length) return empty(S.events.some(function (e) { return e.date >= t; }) ? 'Nothing else planned.' : 'Nothing planned yet. Add your first plan above.');
+    if (!groups.length) return empty(S.events.some(function (e) { return lastDay(e) >= t; }) ? 'Nothing else planned.' : 'Nothing planned yet. Add your first plan above.');
     return groups.map(function (g) {
       var rel = relDate(g.date), named = rel === 'Today' || rel === 'Tomorrow';
       return '<div class="date-group"><h3 class="date-label"><span class="big">' + parse(g.date).getDate() + '</span><span>' + esc(named ? rel : fmt(g.date, { weekday: 'long' })) + '<small>' + esc(fmt(g.date, { month: 'long', year: 'numeric' })) + '</small></span></h3>' +
@@ -401,7 +417,11 @@
     if (kind === 'quick-task') S.tasks.push({ id: uid(), title: title, due: today(), priority: 2, done: false, created: today() });
     if (kind === 'task') S.tasks.push({ id: uid(), title: title, due: f.due || '', priority: +f.priority || 2, list: (f.list || '').trim(), done: false, created: today() });
     if (kind === 'habit') S.habits.push({ id: uid(), name: title, created: today(), log: {} });
-    if (kind === 'event') { S.events.push({ id: uid(), title: title, date: f.date, time: f.time || '', place: (f.place || '').trim() }); selectDay(f.date); }
+    if (kind === 'event') {
+      var ev2 = { id: uid(), title: title, date: f.date, time: f.time || '', place: (f.place || '').trim() };
+      if (f.end && f.end > f.date) ev2.end = f.end;
+      S.events.push(ev2); selectDay(f.date);
+    }
     save(); render(); toast('Added');
     var first = document.querySelector('[data-form="' + kind + '"] input');
     if (first && window.matchMedia('(pointer: fine)').matches) first.focus();
@@ -487,7 +507,35 @@
     }
   });
 
+  /* Merge another file into this device: skip ids already present, and plans with the same title and dates. */
+  function merge(d) {
+    var added = 0;
+    ['tasks', 'habits', 'events', 'notes'].forEach(function (k) {
+      (Array.isArray(d[k]) ? d[k] : []).forEach(function (item) {
+        if (!item || typeof item !== 'object') return;
+        if (item.id && byId(S[k], item.id)) return;
+        if (k === 'events' && S.events.some(function (e) { return e.title === item.title && e.date === item.date && (e.end || '') === (item.end || ''); })) return;
+        if (k === 'events' && !/^\d{4}-\d{2}-\d{2}$/.test(item.date || '')) return;
+        var copy = Object.assign({}, item); if (!copy.id) copy.id = uid();
+        if (k === 'habits' && (!copy.log || typeof copy.log !== 'object')) copy.log = {};
+        S[k].push(copy); added++;
+      });
+    });
+    return added;
+  }
+
   document.addEventListener('change', function (ev) {
+    if (ev.target.getAttribute('data-input') === 'merge') {
+      var mi = ev.target, mf = mi.files[0]; if (!mf) return;
+      mf.text().then(function (txt) {
+        var d = JSON.parse(txt);
+        if (!d || d.v !== 1) throw new Error('bad');
+        var n = merge(d); save(); render();
+        toast(n ? 'Added ' + plural(n, 'item', 'items') : 'Nothing new to add');
+      }).catch(function () { toast('That file isn’t a Life Organizer file'); })
+        .finally(function () { mi.value = ''; });
+      return;
+    }
     if (ev.target.getAttribute('data-input') !== 'restore') return;
     var input = ev.target, file = input.files[0]; if (!file) return;
     file.text().then(function (txt) {
