@@ -177,8 +177,9 @@
   }
   function eventRow(e) {
     var span = spanLabel(e);
-    var meta = [span, e.place].filter(Boolean).map(esc).join(' · ');
-    return '<li class="row plan' + (span ? ' multi' : '') + '"><span class="time">' + (e.time ? esc(e.time) : 'All day') + '</span>' +
+    var meta = [span, e.place].filter(Boolean).map(esc).join(' · ') + (e.tag ? '<span class="tag">' + esc(e.tag) + '</span>' : '');
+    var when = e.time ? esc(e.time) + (e.endTime ? '<small>' + esc(e.endTime) + '</small>' : '') : 'All day';
+    return '<li class="row plan' + (span ? ' multi' : '') + '"><span class="time">' + when + '</span>' +
       '<div class="row-body"><span class="row-title">' + esc(e.title) + '</span>' + (meta ? '<span class="meta">' + meta + '</span>' : '') + '</div>' +
       del('delete-event', e.id, 'plan: ' + e.title) + '</li>';
   }
@@ -264,7 +265,8 @@
           '<details class="more"><summary>Dates, time and place</summary><div class="form">' +
             '<label class="field"><span>Date</span><input type="date" name="date" required value="' + esc(state.selDay) + '"></label>' +
             '<label class="field"><span>Until</span><input type="date" name="end"></label>' +
-            '<label class="field"><span>Time</span><input type="time" name="time"></label>' +
+            '<label class="field"><span>Starts</span><input type="time" name="time"></label>' +
+            '<label class="field"><span>Ends</span><input type="time" name="endTime"></label>' +
             '<label class="field"><span>Where</span><input name="place" placeholder="Optional"></label>' +
           '</div></details></form>' +
         '<div class="split plans-split">' +
@@ -420,6 +422,7 @@
     if (kind === 'event') {
       var ev2 = { id: uid(), title: title, date: f.date, time: f.time || '', place: (f.place || '').trim() };
       if (f.end && f.end > f.date) ev2.end = f.end;
+      if (f.time && f.endTime && f.endTime > f.time) ev2.endTime = f.endTime;
       S.events.push(ev2); selectDay(f.date);
     }
     save(); render(); toast('Added');
