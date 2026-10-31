@@ -2,3 +2,7 @@
 *.backup.json
 life-organizer-backup*.json
 .DS_Store
+
+# Design review captures
+.impeccable/review/
+.impeccable/questions/
