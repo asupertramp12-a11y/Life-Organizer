@@ -435,3 +435,27 @@ select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmln
 .segmented.inline { display: inline-flex; margin: 0; -webkit-mask-image: none; mask-image: none; }
 .segmented.inline::after { display: none; }
 :root[data-resolved="dark"] .brand img { box-shadow: 0 0 0 1px var(--line-2); }
+
+/* ------------------------------------------------------------ Heads-up: clash and check flags */
+.tag.clash { background: var(--late-soft); color: var(--late); border-color: transparent; font-weight: 600; }
+.tag.check { background: transparent; color: var(--ink-2); border-color: var(--ring); font-weight: 600; }
+.heads-up .panel-head { flex-wrap: wrap; gap: 2px var(--s3); }
+.flags .flag { display: flex; gap: var(--s3); padding: var(--s3) 0; border-top: 1px solid var(--line); }
+.flags .flag:first-child { border-top: 0; padding-top: var(--s1); }
+.flag-when { flex: none; width: 36px; display: grid; justify-items: start; align-content: start; line-height: 1.1; padding-top: 2px; }
+.flag-when b { font-size: 22px; font-weight: 500; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.flag-when small { font-size: 12px; color: var(--ink-2); }
+.sev-clash .flag-when b { color: var(--late); }
+.flag-head { display: flex; align-items: baseline; gap: var(--s2); flex-wrap: wrap; }
+.flag-head .row-title { font-weight: 500; }
+.flag .meta { display: block; }
+.flag-hint { font-size: 13px; font-weight: 500; color: var(--ink); margin-top: 2px; }
+.flag-actions { display: flex; align-items: center; gap: var(--s3); margin-top: 6px; }
+.flag-actions .pill-btn { min-height: 40px; }
+.flag-actions .pill-btn::before { content: none; }
+.flag-actions .pill-btn .icon { stroke-width: 2.25; }
+/* Dial: a short brick bar under days with a clash, a ring-grey one for a check */
+.day.has-clash::after, .day.has-check::after {
+  content: ""; position: absolute; bottom: 3px; left: 50%; width: 16px; height: 2.5px; margin-left: -8px; border-radius: 2px; background: var(--late);
+}
+.day.has-check::after { background: var(--ring); }

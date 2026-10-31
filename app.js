@@ -7,13 +7,14 @@
 
   /* ------------------------------------------------------------------ Storage */
   var KEY = 'lo:data:v1';
-  var EMPTY = function () { return { v: 1, tasks: [], habits: [], events: [], notes: [] }; };
+  var EMPTY = function () { return { v: 1, tasks: [], habits: [], events: [], notes: [], ack: {} }; };
 
   function normalise(d) {
     var base = EMPTY();
     if (!d || typeof d !== 'object') return base;
     ['tasks', 'habits', 'events', 'notes'].forEach(function (k) { base[k] = Array.isArray(d[k]) ? d[k] : []; });
     base.habits.forEach(function (h) { if (!h.log || typeof h.log !== 'object') h.log = {}; });
+    base.ack = d.ack && typeof d.ack === 'object' ? d.ack : {};   // dismissed clash flags
     return base;
   }
   function load() {
@@ -22,6 +23,7 @@
   }
   var S = load();
   function save() {
+    flagCache = null;
     try { localStorage.setItem(KEY, JSON.stringify(S)); }
     catch (e) { toast('Couldn’t save. Storage may be full: back up and delete old notes.'); }
   }
@@ -177,7 +179,9 @@
   }
   function eventRow(e) {
     var span = spanLabel(e);
-    var meta = [span, e.place].filter(Boolean).map(esc).join(' · ') + (e.tag ? '<span class="tag">' + esc(e.tag) + '</span>' : '');
+    var fl = flagFor(e);
+    var meta = [span, e.place].filter(Boolean).map(esc).join(' · ') + (e.tag ? '<span class="tag">' + esc(e.tag) + '</span>' : '') +
+      (fl ? '<span class="tag ' + fl + '">' + (fl === 'clash' ? 'Clash' : 'Check') + '</span>' : '');
     var when = e.time ? esc(e.time) + (e.endTime ? '<small>' + esc(e.endTime) + '</small>' : '') : 'All day';
     return '<li class="row plan' + (span ? ' multi' : '') + '"><span class="time">' + when + '</span>' +
       '<div class="row-body"><span class="row-title">' + esc(e.title) + '</span>' + (meta ? '<span class="meta">' + meta + '</span>' : '') + '</div>' +
@@ -208,7 +212,8 @@
       '<div class="scale" role="group" aria-label="Choose a day">' +
         days.map(function (d) {
           var n = S.events.filter(function (e) { return occursOn(e, d); }).length;
-          return '<button class="day' + (d === t ? ' is-today' : d < t ? ' is-past' : '') + '" type="button" data-action="pick-day" data-d="' + d + '" aria-pressed="' + (d === state.selDay) + '" aria-label="' + esc(fmt(d, { weekday: 'long', day: 'numeric', month: 'long' })) + (n ? ', ' + plural(n, 'plan', 'plans') : '') + '">' +
+          var fd = flagsOn(d), clash = fd.some(function (f) { return f.sev === 'clash'; });
+          return '<button class="day' + (d === t ? ' is-today' : d < t ? ' is-past' : '') + (clash ? ' has-clash' : fd.length ? ' has-check' : '') + '" type="button" data-action="pick-day" data-d="' + d + '" aria-pressed="' + (d === state.selDay) + '" aria-label="' + esc(fmt(d, { weekday: 'long', day: 'numeric', month: 'long' })) + (n ? ', ' + plural(n, 'plan', 'plans') : '') + (fd.length ? ', ' + plural(fd.length, 'flag', 'flags') : '') + '">' +
             '<span class="dots">' + (n ? '<i></i>'.repeat(Math.min(n, 3)) : '') + '</span>' +
             '<span class="dname">' + esc(fmt(d, { weekday: 'short' })) + '</span><span class="dnum">' + parse(d).getDate() + '</span></button>';
         }).join('') +
@@ -229,6 +234,126 @@
       (!plans.length && !tasks.length ? empty('Nothing planned for ' + esc(name) + '.' + (plansOnly ? '' : ' <a href="#/plans">Add a plan</a>')) : '');
   }
 
+
+  /* ------------------------------------------------------------------ Clash detection
+     Work = a plan with a category label, or "(work)" in its title. Everything else is life.
+     Each upcoming day is checked; results are cached until the next save. */
+  var flagCache = null;
+  var HOLIDAY = /^(christmas day|boxing day|new year.s day|good friday|easter monday)|bank holiday/i;
+  function isWork(e) { return !!e.tag || /\(work\)/i.test(e.title); }
+  function isLeave(e) { return isWork(e) && (e.tag === 'Leave' || /\bleave\b/i.test(e.title)); }
+  function isAway(e) { return isWork(e) && !isLeave(e) && (lastDay(e) !== e.date || /\btrip\b/i.test(e.title)); }
+  function isBlock(e) { return /calendar block/i.test(e.title); }
+  function isHoliday(e) { return !isWork(e) && HOLIDAY.test(e.title); }
+  function mins(t) { var p = (t || '').split(':'); return +p[0] * 60 + (+p[1] || 0); }
+  function window_(e) { var a = mins(e.time); return [a, e.endTime ? mins(e.endTime) : a + 60]; }
+  function overlaps(a, b) { var x = window_(a), y = window_(b); return x[0] < y[1] && y[0] < x[1]; }
+  function times(e) { return e.time ? e.time + (e.endTime ? '–' + e.endTime : '') : 'All day'; }
+  function hhmm(m) { return pad(Math.floor(m / 60)) + ':' + pad(m % 60); }
+  function names(list, n) { var t = list.slice(0, n).map(function (e) { return e.title; }); return t.join(', ') + (list.length > n ? ' +' + (list.length - n) + ' more' : ''); }
+
+  function flags() {
+    if (flagCache) return flagCache;
+    var t = today(), byKey = {}, out = [];
+    var last = S.events.reduce(function (m, e) { return lastDay(e) > m ? lastDay(e) : m; }, t);
+    if (last > addDays(t, 200)) last = addDays(t, 200);
+    function push(f) {
+      var had = byKey[f.key];
+      if (had) {
+        if (had.days.indexOf(f.day) < 0) had.days.push(f.day);
+        f.ids.forEach(function (id) { if (had.ids.indexOf(id) < 0) had.ids.push(id); });
+        if (f.items) had.items = had.items.concat(f.items);
+        return;
+      }
+      f.days = [f.day]; byKey[f.key] = f; out.push(f);
+    }
+    for (var d = t; d <= last; d = addDays(d, 1)) {
+      var evs = S.events.filter(function (e) { return occursOn(e, d); });
+      if (!evs.length) continue;
+      var work = evs.filter(isWork), life = evs.filter(function (e) { return !isWork(e) && !isHoliday(e); });
+      var leave = work.filter(isLeave)[0], away = work.filter(isAway)[0], hol = evs.filter(isHoliday)[0];
+      var meetings = work.filter(function (e) { return e.time && !isLeave(e) && !isAway(e); });
+      var real = meetings.filter(function (e) { return !isBlock(e); });
+      if (leave) {
+        if (meetings.length) push({ key: 'leave|' + leave.id, kind: 'leave', sev: 'clash', day: d, ids: meetings.map(function (e) { return e.id; }),
+          items: meetings, leave: leave, hint: 'Decline or move them' });
+        continue;   // you're off, so life plans that day are fine
+      }
+      if (hol && real.length) push({ key: 'hol|' + d, kind: 'holiday', sev: 'clash', day: d, ids: real.map(function (e) { return e.id; }),
+        title: 'Work on ' + hol.title, detail: names(real, 3), hint: 'Probably cancelled: decline or check' });
+      life.forEach(function (L) {
+        if (away) {
+          push({ key: 'away|' + L.id + '|' + away.id, pair: 'away|' + L.title + '|' + away.title, kind: 'away', sev: 'clash', day: d, ids: [L.id],
+            title: L.title + ' while you’re away', detail: away.title + (away.place ? ' · ' + away.place : ''), hint: 'Arrange cover, or move it' });
+          return;
+        }
+        if (!meetings.length) return;
+        if (L.time) {
+          var hit = meetings.filter(function (w) { return overlaps(L, w); });
+          if (hit.length) push({ key: 'time|' + L.id + '|' + d, pair: 'time|' + L.title + '|' + hit[0].title, kind: 'overlap', sev: 'clash', day: d,
+            ids: [L.id].concat(hit.map(function (w) { return w.id; })),
+            title: L.title + ' clashes with ' + hit[0].title + (hit.length > 1 ? ' +' + (hit.length - 1) : ''), detail: times(L) + ' vs ' + times(hit[0]), hint: 'Move one, or arrange cover' });
+          return;
+        }
+        var byTime = meetings.slice().sort(function (a, b) { return mins(a.time) - mins(b.time); });
+        var endM = Math.max.apply(null, meetings.map(function (w) { return window_(w)[1]; }));
+        var main = real.length ? real : byTime;
+        push({ key: 'check|' + L.id, pair: 'check|' + L.title + '|' + main.map(function (w) { return w.title; }).sort().join('+'), kind: 'check', sev: 'check', day: d, ids: [L.id],
+          title: L.title + ' on a working day', detail: 'Work ' + byTime[0].time + '–' + hhmm(endM) + ' · ' + names(main, 2), hint: 'Who’s covering? Plan ahead' });
+      });
+      for (var i = 0; i < real.length; i++) for (var j = i + 1; j < real.length; j++) {
+        if (overlaps(real[i], real[j])) push({ key: 'dbl|' + real[i].id + '|' + real[j].id, pair: 'dbl|' + real[i].title + '|' + real[j].title, kind: 'double', sev: 'clash', day: d,
+          ids: [real[i].id, real[j].id], title: 'Double-booked: ' + real[i].title + ' and ' + real[j].title, detail: times(real[i]) + ' and ' + times(real[j]), hint: 'Pick one, or send apologies' });
+      }
+    }
+    out.forEach(function (f) {   // leave flags gather every day of the leave into one
+      if (f.kind !== 'leave') return;
+      var real2 = f.items.filter(function (e) { return !isBlock(e); });
+      f.title = plural(f.items.length, 'work commitment', 'work commitments') + ' during ' + f.leave.title;
+      f.detail = names(real2.length ? real2 : f.items, 3);
+    });
+    flagCache = out.filter(function (f) { return !S.ack[f.key] && !(f.pair && S.ack[f.pair]); });
+    return flagCache;
+  }
+  function flagsOn(d) { return flags().filter(function (f) { return f.days.indexOf(d) > -1; }); }
+  function flagFor(e) {
+    var hit = flags().filter(function (f) { return f.ids.indexOf(e.id) > -1; });
+    return hit.some(function (f) { return f.sev === 'clash'; }) ? 'clash' : hit.length ? 'check' : '';
+  }
+  function dayList(f) {
+    var ds = f.days;
+    if (ds.length === 1) return fmt(ds[0], { weekday: 'short', day: 'numeric', month: 'short' });
+    return fmt(ds[0], { weekday: 'short', day: 'numeric' }) + ' – ' + fmt(ds[ds.length - 1], { weekday: 'short', day: 'numeric', month: 'short' });
+  }
+  function untilLabel(d) {
+    var n = Math.round((parse(d) - parse(today())) / 864e5);
+    return n === 0 ? 'today' : n === 1 ? 'tomorrow' : 'in ' + n + ' days';
+  }
+  function flagRow(f) {
+    return '<li class="flag sev-' + f.sev + '">' +
+      '<span class="flag-when"><b>' + esc(fmt(f.days[0], { day: 'numeric' })) + '</b><small>' + esc(fmt(f.days[0], { month: 'short' })) + '</small></span>' +
+      '<div class="row-body"><span class="flag-head"><span class="tag ' + f.sev + '">' + (f.sev === 'clash' ? 'Clash' : 'Check') + '</span><span class="row-title">' + esc(f.title) + '</span></span>' +
+        '<span class="meta">' + esc(dayList(f)) + ' · ' + esc(untilLabel(f.days[0])) + '</span>' +
+        '<span class="meta">' + esc(f.detail) + '</span>' +
+        '<span class="flag-hint">' + esc(f.hint) + '</span>' +
+        '<span class="flag-actions"><button class="pill-btn" type="button" data-action="ack" data-k="' + esc(f.key) + '">' + icon('check', 'tiny') + 'Got it</button>' +
+        (f.pair ? '<button class="link" type="button" data-action="ack" data-k="' + esc(f.pair) + '">Always fine</button>' : '') + '</span>' +
+      '</div></li>';
+  }
+  function headsUp(days, limit) {
+    var t = today(), until = days ? addDays(t, days) : '9999';
+    var list = flags().filter(function (f) { return f.days[0] <= until; });
+    if (!list.length) return '';
+    var clashes = list.filter(function (f) { return f.sev === 'clash'; }).length;
+    var shown = state.allFlags || !limit ? list : list.slice(0, limit);
+    var summary = [clashes ? plural(clashes, 'clash', 'clashes') : '', list.length - clashes ? (list.length - clashes) + ' to check' : ''].filter(Boolean).join(' · ');
+    return '<section class="panel heads-up" aria-labelledby="h-flags"><div class="panel-head"><h2 id="h-flags">Heads-up' + (days ? ': next ' + days + ' days' : '') + '</h2>' +
+      '<span class="meta">' + esc(summary) + '</span></div>' +
+      '<ul class="list flags">' + shown.map(flagRow).join('') + '</ul>' +
+      (shown.length < list.length ? '<button class="link" type="button" data-action="all-flags">Show all ' + list.length + '</button>' : '') +
+      '</section>';
+  }
+
   /* ------------------------------------------------------------------ Views */
   var VIEWS = {
     today: function () {
@@ -236,7 +361,8 @@
       var open = S.tasks.filter(function (x) { return !x.done && x.due && x.due <= t; }).length;
       var plansToday = S.events.filter(function (e) { return occursOn(e, t); }).length;
       var habitsLeft = S.habits.filter(function (h) { return !h.log[t]; }).length;
-      var sub = [plural(open, 'task due', 'tasks due'), plural(plansToday, 'plan', 'plans')]
+      var soon = flags().filter(function (f) { return f.sev === 'clash' && f.days[0] <= addDays(t, 7); }).length;
+      var sub = [plural(open, 'task due', 'tasks due'), plural(plansToday, 'plan', 'plans')].concat(soon ? [plural(soon, 'clash', 'clashes') + ' this week'] : [])
         .concat(S.habits.length ? [plural(habitsLeft, 'habit', 'habits') + ' to go'] : []).join(' · ');
       var notes = S.notes.slice().sort(noteOrder).slice(0, 3);
       var undated = S.tasks.filter(function (x) { return !x.done && !x.due; }).sort(sortTasks).slice(0, 4);
@@ -244,7 +370,7 @@
         quickAdd() +
         '<div class="split">' +
           '<section class="panel" aria-labelledby="h-agenda"><h2 id="h-agenda" class="visually-hidden">Agenda</h2>' + dial() + '<div id="agenda">' + agenda(state.selDay) + '</div></section>' +
-          '<div class="stack">' +
+          '<div class="stack">' + headsUp(14, 3) +
             (S.habits.length ? '<section class="panel" aria-labelledby="h-hab"><h2 id="h-hab">Habits</h2>' + habitList(1) + '</section>' : '') +
             '<section class="panel" aria-labelledby="h-notes"><div class="panel-head"><h2 id="h-notes">Notes</h2><a class="link" href="#/notes">All notes</a></div>' +
               (notes.length ? '<ul class="list">' + notes.map(noteLine).join('') + '</ul>' : empty('No notes yet. <a href="#/notes" data-action="new-note">Write one</a>')) + '</section>' +
@@ -271,7 +397,7 @@
           '</div></details></form>' +
         '<div class="split plans-split">' +
           '<section class="panel sticky" aria-labelledby="h-week"><h2 id="h-week" class="visually-hidden">Week</h2>' + dial() + '<div id="agenda" data-plans-only>' + agenda(state.selDay, true) + '</div></section>' +
-          '<div class="stack"><section class="panel" aria-labelledby="h-up"><h2 id="h-up">Coming up</h2><div id="upcoming">' + upcomingList() + '</div></section>' +
+          '<div class="stack">' + headsUp(0, 5) + '<section class="panel" aria-labelledby="h-up"><h2 id="h-up">Coming up</h2><div id="upcoming">' + upcomingList() + '</div></section>' +
           (past.length ? '<section class="panel quiet" aria-labelledby="h-past"><h2 id="h-past">Recent</h2><ul class="list">' + past.map(function (e) {
             return '<li class="row plan"><span class="time">' + esc(fmt(e.date, { day: 'numeric', month: 'short' })) + '</span><div class="row-body"><span class="row-title">' + esc(e.title) + '</span></div>' + del('delete-event', e.id, 'plan: ' + e.title) + '</li>';
           }).join('') + '</ul></section>' : '') + '</div>' +
@@ -464,6 +590,8 @@
         remove(S.notes, id); save(); location.hash = '#/notes'; toast('Note deleted'); return;
       case 'toggle-theme': setTheme(isDark() ? 'light' : 'dark'); if (route().name === 'settings') render(); return;
       case 'set-theme': setTheme(b.getAttribute('data-t')); render(); return;
+      case 'ack': S.ack[b.getAttribute('data-k')] = today(); toast(b.getAttribute('data-k').indexOf('|') > -1 && b.classList.contains('link') ? 'Won’t flag that pairing again' : 'Dismissed'); break;
+      case 'all-flags': state.allFlags = true; render(); return;
       case 'backup': backup(); return;
       case 'erase': if (!confirm('Erase all your tasks, habits, plans and notes on this device?')) return; S = EMPTY(); toast('Everything erased'); break;
       default: return;
