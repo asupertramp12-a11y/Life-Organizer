@@ -478,3 +478,10 @@ select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmln
 .import-status { margin: var(--s3) 0 0; font-size: 14px; font-weight: 500; color: var(--ink); min-height: 1.5em; }
 .import-status span { font-weight: 400; color: var(--ink-2); }
 .import-status.bad { color: var(--late); }
+.file-btn { position: relative; overflow: hidden; }
+.file-in { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 0; }
+.link-form { display: grid; grid-template-columns: 1fr; gap: var(--s2); margin-top: var(--s4); }
+.link-form .btn { justify-self: start; }
+@container (min-width: 640px) { .link-form { grid-template-columns: 1fr auto; align-items: end; } }
+.version { color: var(--ink-2); font-size: 13px; padding: 0 var(--s2); margin: 0 0 var(--s4); }
+.version .link { font-size: 13px; padding: 0; }

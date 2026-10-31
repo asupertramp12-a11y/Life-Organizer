@@ -7,6 +7,7 @@
 
   /* ------------------------------------------------------------------ Storage */
   var KEY = 'lo:data:v1';
+  var APP_VERSION = '15';
   var EMPTY = function () { return { v: 1, tasks: [], habits: [], events: [], notes: [], ack: {} }; };
 
   function normalise(d) {
@@ -754,9 +755,13 @@
           '<div class="actions"><button class="btn" type="button" data-action="backup">Back up to a file</button>' +
           '<label class="btn ghost">Restore from a file<input type="file" accept="application/json,.json" data-input="restore" hidden></label></div></section>' +
         '<section class="panel"><h2>Add from a file</h2><p>Add an Outlook calendar file (.ics), or plans, tasks, habits and notes from a Life Organizer file, without replacing what’s already here. Loading a new Outlook file updates your work calendar.</p>' +
-          '<div class="actions"><label class="btn ghost">Choose a file to add<input type="file" data-input="merge" hidden></label></div>' +
+          '<div class="actions"><label class="btn ghost file-btn" data-action="picking">Choose a file<input type="file" class="file-in" data-input="merge" tabindex="-1"></label></div>' +
+          '<form class="link-form" data-form="ics-url" autocomplete="off"><label class="field"><span>Or your Outlook calendar link</span>' +
+            '<input name="url" type="url" inputmode="url" placeholder="https://outlook.office365.com/owa/calendar/…/calendar.ics" value="' + esc(LINKS.icsUrl || '') + '"></label>' +
+            '<button class="btn" type="submit">Update from link</button></form>' +
           '<p class="import-status" id="import-status" role="status">' + (LINKS.lastImport ? esc(LINKS.lastImport.msg) + ' <span>' + esc(relDate(iso(new Date(LINKS.lastImport.at)))) + ' at ' + esc(new Date(LINKS.lastImport.at).toTimeString().slice(0, 5)) + '</span>' : '') + '</p></section>' +
         '<section class="panel"><h2>Install</h2><p><b>Android:</b> open the browser menu and choose <i>Install app</i> or <i>Add to Home screen</i>. <b>iPhone or iPad:</b> in Safari, Share → Add to Home Screen.</p></section>' +
+        '<p class="version">Version ' + APP_VERSION + ' · <button class="link" type="button" data-action="reload-app">Reload app</button></p>' +
         '<section class="panel"><h2>Start over</h2><p>Erase everything on this device. This can’t be undone, so back up first.</p><button class="btn danger" type="button" data-action="erase">Erase all data</button></section>';
     }
   };
@@ -829,6 +834,7 @@
     var form = ev.target, kind = form.getAttribute('data-form');
     if (!kind) return;
     ev.preventDefault();
+    if (kind === 'ics-url') { fetchICS(form.elements.url.value); return; }
     var f = Object.fromEntries(new FormData(form));
     var title = (f.title || f.name || '').trim();
     if (!title) { toast('Type something first'); return; }
@@ -881,6 +887,15 @@
       case 'toggle-theme': setTheme(isDark() ? 'light' : 'dark'); if (route().name === 'settings') render(); return;
       case 'set-theme': setTheme(b.getAttribute('data-t')); render(); return;
       case 'ack': S.ack[b.getAttribute('data-k')] = today(); toast(b.getAttribute('data-k').indexOf('|') > -1 && b.classList.contains('link') ? 'Won’t flag that pairing again' : 'Dismissed'); break;
+      case 'picking':
+        try { sessionStorage.setItem('lo:picking', String(Date.now())); } catch (e) { /* ignore */ }
+        var st = document.getElementById('import-status'); if (st) { st.textContent = 'Opening file picker…'; st.classList.remove('bad'); }
+        return;
+      case 'reload-app':
+        b.textContent = 'Reloading…';
+        Promise.all(['./', 'index.html', 'app.js?v=' + APP_VERSION, 'styles.css'].map(function (u) { return fetch(u, { cache: 'reload' }).catch(function () {}); }))
+          .then(function () { location.reload(); });
+        return;
       case 'fetch-planner': b.disabled = true; b.textContent = 'Checking…'; fetchPlanner(false); return;
       case 'all-flags': state.allFlags = true; render(); return;
       case 'backup': backup(); return;
@@ -946,34 +961,16 @@
     return added;
   }
 
+  document.addEventListener('input', function (ev) {
+    if (ev.target.getAttribute && ev.target.getAttribute('data-input') === 'merge') takeFile(ev.target);
+  });
   document.addEventListener('change', function (ev) {
     if (ev.target.getAttribute('data-input') === 'link-toggle') {
       var lk = ev.target.getAttribute('data-k');
       if (ev.target.checked) delete LINKS.off[lk]; else LINKS.off[lk] = true;
       saveLinks(); render(); toast(ev.target.checked ? 'Included' : 'Hidden from your plans'); return;
     }
-    if (ev.target.getAttribute('data-input') === 'merge') {
-      var mi = ev.target, mf = mi.files && mi.files[0];
-      if (!mf) { importStatus('No file was chosen. Try again, and pick the file from Downloads.', true); return; }
-      importStatus('Reading ' + (mf.name || 'file') + '…');
-      readFile(mf).then(function (txt) {
-        return new Promise(function (done) { setTimeout(function () { done(txt); }, 30); });   // let “Reading…” show first
-      }).then(function (txt) {
-        var msg;
-        if (/^\uFEFF?\s*BEGIN:VCALENDAR/i.test(txt)) msg = importICS(txt);
-        else {
-          var d; try { d = JSON.parse(txt); } catch (e) { d = null; }
-          if (!d || d.v !== 1) { importStatus('That isn’t a calendar (.ics) or Life Organizer file' + (mf.name ? ' (' + mf.name + ')' : '') + '.', true); return; }
-          var n = merge(d); save();
-          msg = n ? 'Added ' + plural(n, 'item', 'items') + '.' : 'Nothing new to add: everything in that file is already here.';
-        }
-        LINKS.lastImport = { at: new Date().toISOString(), msg: msg }; saveLinks();
-        render(); toast(msg.split('.')[0]);
-      }).catch(function (err) {
-        importStatus('Couldn’t read that file' + (err && err.message ? ': ' + err.message : '') + '. Try downloading it again.', true);
-      }).then(function () { mi.value = ''; });
-      return;
-    }
+    if (ev.target.getAttribute('data-input') === 'merge') { takeFile(ev.target); return; }
     if (ev.target.getAttribute('data-input') !== 'restore') return;
     var input = ev.target, file = input.files[0]; if (!file) return;
     file.text().then(function (txt) {
@@ -984,6 +981,47 @@
     }).catch(function () { toast('That file isn’t a Life Organizer backup'); })
       .finally(function () { input.value = ''; });
   });
+
+  /* Adding a file: shared by the file button (change and input events) and Update from link. */
+  function takeFile(input) {
+    var f = input.files && input.files[0];
+    try { sessionStorage.removeItem('lo:picking'); } catch (e) { /* ignore */ }
+    if (!f) { importStatus('No file came back from the picker. Try again, or use Update from link.', true); return; }
+    if (input._last === f) return;   // change and input both fire in some browsers
+    input._last = f;
+    importStatus('Reading ' + (f.name || 'file') + ' (' + Math.round(f.size / 1024) + ' KB)…');
+    readFile(f).then(function (txt) { takeText(txt, f.name); })
+      .catch(function (err) { importStatus('Couldn’t read that file' + (err && err.message ? ': ' + err.message : '') + '. Try downloading it again.', true); })
+      .then(function () { setTimeout(function () { input.value = ''; input._last = null; }, 0); });
+  }
+  function takeText(txt, name) {
+    return new Promise(function (done) { setTimeout(done, 30); }).then(function () {   // let “Reading…” paint first
+      var msg;
+      if (/^\uFEFF?\s*BEGIN:VCALENDAR/i.test(txt)) msg = importICS(txt);
+      else {
+        var d; try { d = JSON.parse(txt); } catch (e) { d = null; }
+        if (!d || d.v !== 1) { importStatus('That isn’t a calendar (.ics) or Life Organizer file' + (name ? ' (' + name + ')' : '') + '.', true); return; }
+        var n = merge(d); save();
+        msg = n ? 'Added ' + plural(n, 'item', 'items') + '.' : 'Nothing new to add: everything in that file is already here.';
+      }
+      LINKS.lastImport = { at: new Date().toISOString(), msg: msg }; saveLinks();
+      render(); toast(msg.split('.')[0]);
+    });
+  }
+  function fetchICS(url) {
+    url = url.trim().replace(/^webcal:/i, 'https:');
+    if (!/^https:\/\/\S+$/i.test(url)) { importStatus('That doesn’t look like a calendar link. It should start with https:// and end in .ics', true); return; }
+    LINKS.icsUrl = url; saveLinks();
+    importStatus('Fetching your calendar…');
+    fetch(url, { cache: 'no-store' }).then(function (r) {
+      if (!r.ok) throw new Error('Outlook answered ' + r.status + (r.status === 404 || r.status === 403 ? ': the link may not be published yet, or has been reset' : ''));
+      return r.text();
+    }).then(function (txt) { return takeText(txt, 'calendar link'); })
+      .catch(function (err) {
+        var blocked = err && /fetch|network|load failed/i.test(err.message || '');
+        importStatus(blocked ? 'Outlook doesn’t let other websites fetch the calendar directly, so this route is blocked. Use Choose a file instead.' : 'Couldn’t fetch the calendar: ' + ((err && err.message) || 'unknown error') + '.', true);
+      });
+  }
 
   function readFile(f) {
     if (f.text) return f.text();
@@ -1014,5 +1052,12 @@
   });
   if (familyCode() && navigator.onLine && (!LINKS.fetchedAt || Date.now() - Date.parse(LINKS.fetchedAt) > 3 * 36e5)) fetchPlanner(true);
   applyTheme();
+  (function () {   // the app restarted while the file picker was open: the file never arrived
+    var t = 0; try { t = +sessionStorage.getItem('lo:picking') || 0; sessionStorage.removeItem('lo:picking'); } catch (e) { /* ignore */ }
+    if (t && Date.now() - t < 5 * 6e4) setTimeout(function () {
+      if (route().name !== 'settings') location.hash = '#/settings';
+      setTimeout(function () { importStatus('Life Organizer was restarted by your phone while the file picker was open, so the file didn’t arrive. Try Update from link, or close some apps and try again.', true); }, 50);
+    }, 50);
+  })();
   render();
 })();
