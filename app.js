@@ -755,7 +755,7 @@
           '<div class="actions"><button class="btn" type="button" data-action="backup">Back up to a file</button>' +
           '<label class="btn ghost">Restore from a file<input type="file" accept="application/json,.json" data-input="restore" hidden></label></div></section>' +
         '<section class="panel"><h2>Add from a file</h2><p>Add an Outlook calendar file (.ics), or plans, tasks, habits and notes from a Life Organizer file, without replacing what’s already here. Loading a new Outlook file updates your work calendar.</p>' +
-          '<div class="actions"><label class="btn ghost">Choose a file to add<input type="file" accept="application/json,.json,text/calendar,.ics" data-input="merge" hidden></label></div></section>' +
+          '<div class="actions"><label class="btn ghost">Choose a file to add<input type="file" data-input="merge" hidden></label></div></section>' +
         '<section class="panel"><h2>Install</h2><p><b>Android:</b> open the browser menu and choose <i>Install app</i> or <i>Add to Home screen</i>. <b>iPhone or iPad:</b> in Safari, Share → Add to Home Screen.</p></section>' +
         '<section class="panel"><h2>Start over</h2><p>Erase everything on this device. This can’t be undone, so back up first.</p><button class="btn danger" type="button" data-action="erase">Erase all data</button></section>';
     }
@@ -960,7 +960,7 @@
         if (!d || d.v !== 1) throw new Error('bad');
         var n = merge(d); save(); render();
         toast(n ? 'Added ' + plural(n, 'item', 'items') : 'Nothing new to add');
-      }).catch(function () { toast('That file isn’t a Life Organizer file'); })
+      }).catch(function () { toast('That isn’t a calendar (.ics) or Life Organizer file'); })
         .finally(function () { mi.value = ''; });
       return;
     }
