@@ -185,6 +185,7 @@
     var meta = [span, e.place].filter(Boolean).map(esc).join(' · ') + (e.tag ? '<span class="tag">' + esc(e.tag) + '</span>' : '') +
       (e.who ? '<span class="tag who" title="From ' + esc(e.srcName || '') + '">' + icon('link', 'tiny') + esc(e.who) + '</span>' : '') +
       (e.deadline ? '<span class="tag">Deadline</span>' : '') +
+      (e.busy ? '<span class="tag">' + (e.busy === 'free' ? 'Free' : 'Tentative') + '</span>' : '') +
       (fl ? '<span class="tag ' + fl + '">' + (fl === 'clash' ? 'Clash' : 'Check') + '</span>' : '');
     var when = e.time ? esc(e.time) + (e.endTime ? '<small>' + esc(e.endTime) + '</small>' : '') : 'All day';
     return '<li class="row plan' + (span ? ' multi' : '') + '"><span class="time">' + when + '</span>' +
@@ -373,7 +374,7 @@
     'Central European Standard Time': 'Europe/Warsaw', 'GTB Standard Time': 'Europe/Athens', 'E. Europe Standard Time': 'Europe/Chisinau',
     'FLE Standard Time': 'Europe/Kiev', 'Eastern Standard Time': 'America/New_York', 'Central Standard Time': 'America/Chicago',
     'Mountain Standard Time': 'America/Denver', 'Pacific Standard Time': 'America/Los_Angeles', 'India Standard Time': 'Asia/Kolkata',
-    'Singapore Standard Time': 'Asia/Singapore', 'AUS Eastern Standard Time': 'Australia/Sydney' };
+    'Singapore Standard Time': 'Asia/Singapore', 'Arab Standard Time': 'Asia/Riyadh', 'Arabian Standard Time': 'Asia/Dubai', 'Arabic Standard Time': 'Asia/Baghdad', 'Israel Standard Time': 'Asia/Jerusalem', 'Turkey Standard Time': 'Europe/Istanbul', 'Egypt Standard Time': 'Africa/Cairo', 'AUS Eastern Standard Time': 'Australia/Sydney' };
   function zoneOffset(tz, utcMs) {   // minutes the zone is ahead of UTC at that instant
     var p = {}; new Intl.DateTimeFormat('en-GB', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })
       .formatToParts(new Date(utcMs)).forEach(function (x) { p[x.type] = +x.value; });
@@ -453,7 +454,8 @@
       var cats = icsText((first(ev, 'CATEGORIES') || {}).value).split(',')[0];
       var busy = ((first(ev, 'X-MICROSOFT-CDO-BUSYSTATUS') || {}).value || '').toUpperCase();
       var p = { id: 'ol:' + uid + ':' + date, title: title, date: date, time: '', place: icsText((first(ev, 'LOCATION') || {}).value).replace(/^Microsoft Teams Meeting$/i, 'Teams'),
-        tag: busy === 'OOF' || /\bleave\b|holiday|out of office/i.test(title) && st.allDay ? 'Leave' : (cats || 'Work'), src: 'outlook', srcName: 'Outlook', feed: 'outlook' };
+        tag: busy === 'OOF' || /\b(annual leave|leave|bank holiday|holiday|out of office|ooo)\b/i.test(title) ? 'Leave' : (cats || 'Work'), src: 'outlook', srcName: 'Outlook', feed: 'outlook' };
+      if (busy === 'FREE' || busy === 'TENTATIVE') p.busy = busy.toLowerCase();
       if (st.allDay) { if (spanDays > 1) p.end = addDays(date, spanDays - 1); }
       else { p.time = st.time; if (en && !en.allDay && en.date === st.date) p.endTime = en.time; else if (en && !en.allDay && en.date > st.date) p.end = addDays(date, Math.round((parse(en.date) - parse(st.date)) / 864e5)); }
       return p;
@@ -508,7 +510,10 @@
   function isWork(e) { return !!e.tag || /\(work\)/i.test(e.title); }
   function isLeave(e) { return isWork(e) && (e.tag === 'Leave' || /\bleave\b/i.test(e.title)); }
   function isAway(e) { return isWork(e) && !isLeave(e) && (lastDay(e) !== e.date || /\btrip\b/i.test(e.title)); }
-  function isBlock(e) { return /calendar block/i.test(e.title); }
+  function isBlock(e) {   // a block of time (e.g. a whole Tekever day) rather than a meeting
+    if (/calendar block/i.test(e.title)) return true;
+    return !!(e.time && e.endTime && mins(e.endTime) - mins(e.time) >= 360);
+  }
   function isHoliday(e) { return !isWork(e) && HOLIDAY.test(e.title); }
   function mins(t) { var p = (t || '').split(':'); return +p[0] * 60 + (+p[1] || 0); }
   function window_(e) { var a = mins(e.time); return [a, e.endTime ? mins(e.endTime) : a + 60]; }
@@ -544,6 +549,7 @@
       var leave = work.filter(isLeave)[0], away = work.filter(isAway)[0], hol = evs.filter(isHoliday)[0];
       var meetings = work.filter(function (e) { return e.time && !isLeave(e) && !isAway(e); });
       var real = meetings.filter(function (e) { return !isBlock(e); });
+      var firm = real.filter(function (e) { return e.busy !== 'free'; });   // free time can't be double-booked
       if (leave) {
         if (meetings.length) push({ key: 'leave|' + leave.id, kind: 'leave', sev: 'clash', day: d, ids: meetings.map(function (e) { return e.id; }),
           items: meetings, leave: leave, hint: 'Decline or move them' });
@@ -584,9 +590,9 @@
           ids: [A.id, B.id], title: 'Two things at once: ' + A.title + ' and ' + B.title,
           detail: times(A) + ' (' + (A.who || 'you') + ') and ' + times(B) + ' (' + (B.who || 'you') + ')', hint: 'Needs two adults, or a lift sorted' });
       }
-      for (var i = 0; i < real.length; i++) for (var j = i + 1; j < real.length; j++) {
-        if (overlaps(real[i], real[j])) push({ key: 'dbl|' + real[i].id + '|' + real[j].id, pair: 'dbl|' + real[i].title + '|' + real[j].title, kind: 'double', sev: 'clash', day: d,
-          ids: [real[i].id, real[j].id], title: 'Double-booked: ' + real[i].title + ' and ' + real[j].title, detail: times(real[i]) + ' and ' + times(real[j]), hint: 'Pick one, or send apologies' });
+      for (var i = 0; i < firm.length; i++) for (var j = i + 1; j < firm.length; j++) {
+        if (overlaps(firm[i], firm[j])) push({ key: 'dbl|' + firm[i].id + '|' + firm[j].id, pair: 'dbl|' + firm[i].title + '|' + firm[j].title, kind: 'double', sev: 'clash', day: d,
+          ids: [firm[i].id, firm[j].id], title: 'Double-booked: ' + firm[i].title + ' and ' + firm[j].title, detail: times(firm[i]) + ' and ' + times(firm[j]), hint: 'Pick one, or send apologies' });
       }
     }
     out.forEach(function (f) {   // leave flags gather every day of the leave into one
