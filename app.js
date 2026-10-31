@@ -7,7 +7,7 @@
 
   /* ------------------------------------------------------------------ Storage */
   var KEY = 'lo:data:v1';
-  var APP_VERSION = '15';
+  var APP_VERSION = '16';
   var EMPTY = function () { return { v: 1, tasks: [], habits: [], events: [], notes: [], ack: {} }; };
 
   function normalise(d) {
@@ -129,12 +129,21 @@
     document.getElementById('rail-theme').innerHTML = themeKey();
     document.getElementById('tabbar').innerHTML = ROUTES.map(function (r) { return navLink(r, cur); }).join('');
   }
+  /* While the file picker is open, background refreshes wait: redrawing would replace the file
+     button and the chosen file would arrive at a button nobody is listening to. */
+  var pickingSince = 0, refreshWaiting = false;
+  function picking() { return pickingSince && Date.now() - pickingSince < 3 * 6e4; }
+  function refresh() { if (picking()) { refreshWaiting = true; return; } render(); }
   function render(navigated) {
     linkedCache = null; flagCache = null;
     var r = route();
     renderNav(r.name);
     var main = document.getElementById('main');
     main.innerHTML = VIEWS[r.name](r.arg);
+    main.querySelectorAll('input[data-input="merge"]').forEach(function (inp) {   // listen on the button itself too
+      inp.addEventListener('change', function () { takeFile(inp); });
+      inp.addEventListener('cancel', function () { pickingSince = 0; importStatus('No file chosen.'); flushRefresh(); });
+    });
     if (navigated) {
       var auto = main.querySelector('[data-autofocus]');
       if (auto && window.matchMedia('(pointer: fine)').matches) auto.focus();
@@ -336,7 +345,7 @@
     return Promise.all(jobs).then(function (res) {
       res.forEach(function (x) { LINKS.remote[x.w] = x.data; });
       Object.keys(LINKS.remote).forEach(function (w) { if (w < 'W' + addDays(start, -7).replace(/-/g, '')) delete LINKS.remote[w]; });
-      LINKS.fetchedAt = new Date().toISOString(); saveLinks(); render();
+      LINKS.fetchedAt = new Date().toISOString(); saveLinks(); refresh();
       if (!quiet) toast('Douglas’s planner updated');
     }).catch(function () { if (!quiet) toast('Couldn’t reach the family planner. Showing what’s on this phone.'); });
   }
@@ -888,6 +897,7 @@
       case 'set-theme': setTheme(b.getAttribute('data-t')); render(); return;
       case 'ack': S.ack[b.getAttribute('data-k')] = today(); toast(b.getAttribute('data-k').indexOf('|') > -1 && b.classList.contains('link') ? 'Won’t flag that pairing again' : 'Dismissed'); break;
       case 'picking':
+        pickingSince = Date.now();
         try { sessionStorage.setItem('lo:picking', String(Date.now())); } catch (e) { /* ignore */ }
         var st = document.getElementById('import-status'); if (st) { st.textContent = 'Opening file picker…'; st.classList.remove('bad'); }
         return;
@@ -983,16 +993,18 @@
   });
 
   /* Adding a file: shared by the file button (change and input events) and Update from link. */
+  function flushRefresh() { if (refreshWaiting) { refreshWaiting = false; setTimeout(render, 0); } }
   function takeFile(input) {
     var f = input.files && input.files[0];
+    pickingSince = 0;
     try { sessionStorage.removeItem('lo:picking'); } catch (e) { /* ignore */ }
-    if (!f) { importStatus('No file came back from the picker. Try again, or use Update from link.', true); return; }
-    if (input._last === f) return;   // change and input both fire in some browsers
+    if (!f) { importStatus('No file came back from the picker. Try again, or use Update from link.', true); flushRefresh(); return; }
+    if (input._last === f) return;   // change, input and the button's own listener can all fire
     input._last = f;
     importStatus('Reading ' + (f.name || 'file') + ' (' + Math.round(f.size / 1024) + ' KB)…');
     readFile(f).then(function (txt) { takeText(txt, f.name); })
       .catch(function (err) { importStatus('Couldn’t read that file' + (err && err.message ? ': ' + err.message : '') + '. Try downloading it again.', true); })
-      .then(function () { setTimeout(function () { input.value = ''; input._last = null; }, 0); });
+      .then(function () { setTimeout(function () { input.value = ''; input._last = null; }, 0); flushRefresh(); });
   }
   function takeText(txt, name) {
     return new Promise(function (done) { setTimeout(done, 30); }).then(function () {   // let “Reading…” paint first
@@ -1043,12 +1055,12 @@
   }
 
   window.addEventListener('hashchange', function () { render(true); window.scrollTo(0, 0); });
-  window.addEventListener('storage', function (e) { if (e.key === KEY) { S = load(); render(); } if (e.key === THEME_KEY) applyTheme();
-    if ([XP.shared, DH.data, DH.notes, XP.family].indexOf(e.key) > -1) render(); });
+  window.addEventListener('storage', function (e) { if (e.key === KEY) { S = load(); refresh(); } if (e.key === THEME_KEY) applyTheme();
+    if ([XP.shared, DH.data, DH.notes, XP.family].indexOf(e.key) > -1) refresh(); });
   window.addEventListener('focus', function () {   // pick up changes made in the other apps
     var ae = document.activeElement;
     if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && ae.value) return;   // don't wipe a half-typed entry
-    render();
+    refresh();
   });
   if (familyCode() && navigator.onLine && (!LINKS.fetchedAt || Date.now() - Date.parse(LINKS.fetchedAt) > 3 * 36e5)) fetchPlanner(true);
   applyTheme();
