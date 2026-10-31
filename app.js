@@ -7,7 +7,7 @@
 
   /* ------------------------------------------------------------------ Storage */
   var KEY = 'lo:data:v1';
-  var APP_VERSION = '22';
+  var APP_VERSION = '23';
   var EMPTY = function () { return { v: 1, tasks: [], habits: [], events: [], notes: [], ack: {}, cats: { byId: {}, byTitle: {} } }; };
 
   function normalise(d) {
@@ -558,7 +558,7 @@
      clash checks always look at everything. */
   function dorotheaName() { var D = readJSON(DH.data) || {}; return (D.child && (D.child.shortName || D.child.name)) || 'Dorothea'; }
   function cats() {
-    return [{ id: 'work', label: 'Work' }, { id: 'personal', label: 'Personal' }, { id: 'douglas', label: 'Douglas' }, { id: 'dorothea', label: dorotheaName() }];
+    return [{ id: 'work', label: 'Work' }, { id: 'personal', label: 'Personal' }, { id: 'douglas', label: 'Douglas' }, { id: 'dorothea', label: dorotheaName() }, { id: 'amy', label: 'Amy' }];
   }
   /* Who a plan is for. Your choice wins (one plan, or every plan with that title); otherwise a sensible guess:
      Outlook and labelled work -> Work; Douglas's planner by its "who"; the Health app -> Dorothea;
@@ -567,9 +567,10 @@
   function catGuess(e) {
     if (e.feed === 'outlook' || baseWork(e)) return 'work';
     if (e.src === 'health') return 'dorothea';
-    if (e.src === 'xp') return /^doro/i.test(e.who || '') ? 'dorothea' : /^dad$/i.test(e.who || '') ? 'personal' : 'douglas';
+    if (e.src === 'xp') return /^doro/i.test(e.who || '') ? 'dorothea' : /^dad$/i.test(e.who || '') ? 'personal' : /^mum$/i.test(e.who || '') ? 'amy' : 'douglas';
     if (/\bdoro(thea)?\b/i.test(e.title)) return 'dorothea';
     if (/\bdoug(las|ie)?\b/i.test(e.title)) return 'douglas';
+    if (/\bam(y|es)\b/i.test(e.title)) return 'amy';
     return 'personal';
   }
   function catOf(e) {
@@ -689,7 +690,7 @@
   function calendarView() {
     var modes = [['month', 'Month'], ['week', 'Week'], ['agenda', 'Agenda']];
     var body = state.calMode === 'week' ? weekLanes() : state.calMode === 'agenda' ? agendaRange() : '<div class="split cal-split">' + monthGrid() + '</div>';
-    return head('Calendar', 'Work, personal, Douglas and ' + esc(dorotheaName()) + ' together.',
+    return head('Calendar', 'Work, you, Douglas, ' + esc(dorotheaName()) + ' and Amy together.',
         '<button class="key signal" type="button" data-action="new-plan" aria-label="Add a plan">' + icon('plus') + '</button>') +
       '<div class="cal-tools"><div class="segmented" role="group" aria-label="Calendar view">' + modes.map(function (m) {
         return '<button type="button" data-action="cal-mode" data-m="' + m[0] + '" aria-pressed="' + (state.calMode === m[0]) + '">' + m[1] + '</button>';
@@ -753,10 +754,11 @@
       if (hol && real.length) push({ key: 'hol|' + d, kind: 'holiday', sev: 'clash', day: d, ids: real.map(function (e) { return e.id; }),
         title: 'Work on ' + hol.title, detail: names(real, 3), hint: 'Probably cancelled: decline or check' });
       life.forEach(function (L) {
-        if (L.who && OTHER_ADULTS.test(L.who)) {   // someone else's commitment: a soft heads-up only
+        var adult = catOf(L) === 'amy' ? 'Amy' : L.who && OTHER_ADULTS.test(L.who) ? L.who : '';
+        if (adult) {   // another adult's commitment: a soft heads-up only
           if (away || meetings.length) push({ key: 'adult|' + L.id, pair: 'adult|' + L.title, kind: 'adult', sev: 'check', day: d, ids: [L.id],
-            title: L.title + ' (' + L.who + ')', detail: away ? 'You’re away: ' + away.title : 'You’re working ' + meetings.slice().sort(function (a, b) { return mins(a.time) - mins(b.time); })[0].time + ' onwards',
-            hint: L.who + '’s down for this: just confirm' });
+            title: L.title + ' (' + adult + ')', detail: away ? 'You’re away: ' + away.title : 'You’re working ' + meetings.slice().sort(function (a, b) { return mins(a.time) - mins(b.time); })[0].time + ' onwards',
+            hint: adult + '’s down for this: just confirm' });
           return;
         }
         if (away) {

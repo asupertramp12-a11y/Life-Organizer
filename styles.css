@@ -37,6 +37,7 @@
   --c-personal: light-dark(#7657A8, #B9A0E6);
   --c-douglas: light-dark(#2B8257, #63C795);
   --c-dorothea: light-dark(#A2700E, #E2B24E);
+  --c-amy: light-dark(#A84A72, #E58AAF);
   --danger-hover: light-dark(#9A3017, #DA5639);
   --hover-tint: light-dark(rgba(28,29,31,.06), rgba(255,255,255,.07));
   --rail-hover: light-dark(rgba(255,255,255,.45), rgba(255,255,255,.05));
@@ -472,6 +473,7 @@ select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmln
 .cat-personal { --c: var(--c-personal); }
 .cat-douglas { --c: var(--c-douglas); }
 .cat-dorothea { --c: var(--c-dorothea); }
+.cat-amy { --c: var(--c-amy); }
 .cat-dot { display: inline-block; flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--c); margin-right: 8px; vertical-align: 1px; }
 .dots .cat-dot { width: 5px; height: 5px; margin: 0; vertical-align: 0; }
 .cats { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 var(--s4); }
@@ -858,3 +860,11 @@ button.nn-row { cursor: pointer; }
 .sort-row .segmented button { min-height: 40px; font-size: 13px; padding: 0 10px; }
 .sort-row .segmented button .cat-dot { margin-right: 6px; }
 .cal-tools > .link { margin-left: auto; }
+
+/* Five lanes and five chips on the cover screen */
+@media (max-width: 440px) {
+  .sort-row .segmented button { padding: 0 8px; font-size: 12.5px; }
+  .sort-row .segmented button .cat-dot { margin-right: 4px; }
+  .cat-pick .segmented button { padding: 0 10px; }
+}
+@container (max-width: 420px) { .lane-row { grid-template-columns: 40px repeat(var(--lanes), minmax(0, 1fr)); } .lane-ev { font-size: 11px; padding: 3px 4px; } .lane-head span { font-size: 11px; padding: 8px 3px; } .lane-head .cat-dot { margin-right: 3px; } }
