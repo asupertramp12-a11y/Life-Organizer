@@ -2,7 +2,7 @@
   "name": "Life Organizer",
   "short_name": "Organizer",
   "description": "A private personal organizer for tasks, habits, plans and notes.",
-  "start_url": "./index.html#/today",
+  "start_url": "./index.html#/hub",
   "display": "standalone",
   "background_color": "#ECEBE7",
   "theme_color": "#ECEBE7",

@@ -2,13 +2,10 @@
 
 A private personal organizer that runs in your browser and can be added to your phone's home screen like an app.
 
-- **Today**: what's due, today's habits and the next 7 days of plans at a glance, with a quick-add box.
-- **Tasks**: due dates, priority and lists (Home, Work…), with filters for open, overdue and done.
-- **Habits**: tick off each day and keep streaks.
-- **Calendar**: one month view of everything, colour-coded into four categories: **Work** (blue: Outlook and anything labelled work), **Personal** (violet: your own plans and imports), **Douglas** (green: his XP app planner) and **Dorothea** (amber: her Health app). Tap a category chip to show or hide it; clash checks always include everything.
-- **Plans**: appointments, birthdays, trips, anything with a date and time.
-- **Heads-up**: clashes between life and work are flagged automatically: life plans while you're away on a work trip, meetings during leave or on bank holidays, double-booked meetings, and life plans on working days that need cover. Plans with a category label (or "(work)" in the title) count as work. Dismiss a flag with **Got it**, or silence a recurring pairing with **Always fine**.
-- **Notes**: searchable notes you can pin, saved as you type.
+- **The Hub**: Now / Next (what's on now, what's next, what's due, the most urgent heads-up), a quick to-do box, the week dial and the day's merged agenda with a now-line. Work meetings fold into one line unless they clash.
+- **Calendar**: Month, Week (a lane per category) and a 14-day Agenda, colour-coded into four categories: **Work** (blue: Outlook and anything labelled work), **Personal** (violet: your own plans and imports), **Douglas** (green: his XP app planner) and **Dorothea** (amber: her Health app). Tap a category chip to show or hide it; tap any plan to see or edit it.
+- **Thoughts**: to-dos and notes in one place. To-dos with a date appear in The Hub; notes save as you type.
+- **Heads up**: clashes and preplanning, grouped by cause, each with a decision (who's covering, declined, done). Flags cover family plans while you're away, work during leave or on bank holidays, double-booked meetings, two things at once, deadlines and birthdays. Decisions can be undone from Sorted.
 - **Settings**: light, dark or match-device appearance; back up to a file, restore on another device, or erase everything. The sun/moon button in the header (or at the foot of the side rail) switches theme in one tap.
 
 ## Linked apps

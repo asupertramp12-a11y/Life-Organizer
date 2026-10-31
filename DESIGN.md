@@ -65,8 +65,9 @@ typography:
     letterSpacing: "-0.035em"
     fontFeature: "\"tnum\""
 rounded:
-  ctl: "12px"
-  panel: "18px"
+  ctl: "14px"
+  panel: "26px"
+  brand: "9px"
   pill: "999px"
   round: "50%"
 spacing:
@@ -166,7 +167,7 @@ components:
 
 Life Organizer is finished like a mid-century household appliance: a warm light-grey housing, white panels set into it with hairline edges and a soft drop beneath, graphite ink for everything that is read, and a single signal orange for the things that point at now. Every part has one job. Nothing on screen is decoration: the only "ornament" in the system is the tick scale of the week dial, and that is an instrument.
 
-Density is calm rather than sparse. Rows are 56px tall with hairline dividers, panels pad at 16px on the cover screen and 24px once their container passes 640px, and type stays in a narrow range (13px labels to 34px page titles) so hierarchy is carried by weight, ink tone and placement rather than size jumps. Numbers are first-class: times, dates and the dial all use tabular figures so columns of time line up like a printed timetable.
+Density is calm rather than sparse. Rows are 56px tall with hairline dividers, panels pad at 16px on the cover screen and 24px once their container passes 640px, and type stays in a narrow range (13px labels to 34px page titles) so hierarchy is carried by weight, ink tone and placement rather than size jumps. Numbers are first-class: times sit in a fixed-width, left-aligned column so the column edge stays straight (Urbanist has proportional figures only).
 
 The interface is light by commitment; a dark, moody look is out. The system rejects the category default of grey-on-white with a blue accent, and the cream-paper planner costume.
 
@@ -174,8 +175,17 @@ The interface is light by commitment; a dark, moody look is out. The system reje
 - Warm grey housing, near-white panels, graphite ink; one orange signal, one olive for done.
 - Round keys for single-press actions (add, check, habit day); 12px-cornered rectangles for text controls.
 - Soft, low, layered shadows with a white inset top edge, like a moulded part catching light.
-- One self-hosted grotesk (Urbanist) at weights 400 to 600, tabular numerals for all time.
+- One self-hosted geometric sans (Urbanist) at weights 300 to 700; times in fixed-width columns.
 - The week dial: a Monday-to-Sunday tuning scale with an orange needle on the selected day.
+
+## Structure and signals (Version 21)
+
+- **Four tabs:** The Hub (Now / Next, the week dial and the day's merged agenda), Calendar (Month, Week with one lane per category, 14-day Agenda), Thoughts (to-dos and notes; dated to-dos appear in The Hub) and Heads up (clashes and preplanning). Settings sits under the gear in the header and the rail. Older addresses (#/today, #/plans, #/notes, #/tasks, #/habits) redirect.
+- **Surfaces:** glass belongs to the frame (sky, Now / Next, tab bar, rail, chips, capture field). Panels that hold lists, the note editor and the sheet are solid `--panel` with a `--line` hairline.
+- **One meaning per signal:** orange is "now" only: the now-line in today's agenda and today's date (`--signal-ink` disc in the month grid, white text, AA). Clash and Check are graphite tags with a small dot (brick for Clash, ring grey for Check). Graphite fill means "do" (add keys, primary buttons) or "you are here" (current navigation item). Selection is white with a graphite edge. Switches are graphite when on. Olive still means done only.
+- **Work folds:** timed work meetings that aren't part of a clash collapse into one "At work · N meetings" line per day (a dashed chip in the week lanes, "Work · N" in the month grid). Tap to expand.
+- **Heads up:** flags are grouped by cause (a trip; a recurring pairing), in This week, Next week and Later (collapsed). Each item takes a decision: I'll do it / Mum / Nanny / Move it for family cover; Declined / Moved / Keep for work; Done / On it for preplanning. Recurring groups offer "Same for all". Decisions and "Always fine" go to Sorted, where Undo puts them back. The tab badge counts clashes in the next 7 days. Counts always read "N clashes and M checks in the next 7 days".
+- **Sheet:** tapping any plan or to-do opens a bottom sheet (centred from 600px): editable for your own items, read-only with its source for Outlook and the family apps. Deletes and decisions show an Undo toast.
 
 ## Glass layer (current look)
 
@@ -247,9 +257,9 @@ Interaction tints (`ink-hover`, `signal-hover`, `danger`, `danger-hover`, `late-
 
 ## Typography
 
-**Display Font:** Urbanist (self-hosted `schibsted-grotesk.woff2`, variable 400 to 800, preloaded; falls back to ui-sans-serif / system-ui)
+**Display Font:** Urbanist (self-hosted `urbanist.woff2`, variable 300 to 800, preloaded; falls back to ui-sans-serif / system-ui)
 **Body Font:** Urbanist
-**Label/Mono Font:** none distinct; numerals use `tabular-nums`
+**Label/Mono Font:** none distinct; Urbanist has proportional figures only
 
 **Character:** One precise, slightly mechanical grotesk does every job. Tight negative tracking on large sizes and tabular figures give it the feel of a printed control legend.
 
@@ -265,7 +275,7 @@ Interaction tints (`ink-hover`, `signal-hover`, `danger`, `danger-hover`, `late-
 - **Date numeral** (400, 30px, -0.035em, tabular): The large day number heading each "Coming up" group; the one place a big number is set light.
 
 ### Named Rules
-**The Timetable Rule.** Every time, date number and range is set in tabular figures so it aligns in a column.
+**The Timetable Rule.** Every time sits in a fixed-width, left-aligned column so it aligns like a printed timetable.
 
 **The Weight Not Size Rule.** Hierarchy steps by weight (400/500/600) and ink tone (ink, ink-2, ink-3) inside a narrow size range. Don't add sizes above 34px or new weights above 600.
 
@@ -306,7 +316,7 @@ Firm, compact, and quiet until pressed.
 - **Primary:** Graphite fill, white label; hover shifts to `ink-hover`; press moves down 1px.
 - **Ghost:** Panel fill, graphite label, hairline border and key shadow.
 - **Danger:** Late brick fill (hover #9A3017), used only for "Erase all data".
-- **Pill button:** 44px pill, 13px 500, panel fill with strong hairline; pressed state inverts to graphite with white text (the "Pinned" toggle, the "Today" return on the dial).
+- **Pill button:** 44px pill, 13px 500, panel fill with strong hairline; pressed state is white with a 1.5px graphite edge (the "Pinned" toggle, selected segments). Graphite fill is reserved for the primary action and the current navigation item.
 - **Link:** 14px 500 mid-graphite text with a hairline underline that turns signal orange on hover ("All notes", "All tasks").
 
 ### Round Keys (signature control)
