@@ -488,18 +488,17 @@
     return out;
   }
   function uidFor(ev) { return 'x' + Math.abs(JSON.stringify(ev.props).split('').reduce(function (h, c) { return (h * 31 + c.charCodeAt(0)) | 0; }, 7)).toString(36); }
+  /* Returns a sentence describing what happened. Outlook replaces the work diary loaded by hand earlier. */
   function importICS(text) {
     var plans = icsToPlans(text);
-    if (!plans.length) { toast('No events found in that calendar file'); return; }
-    var oldDiary = S.events.filter(function (e) { return /^work-/.test(e.id); });
-    if (oldDiary.length && confirm('Replace the ' + oldDiary.length + ' work diary plans you loaded earlier with your Outlook calendar?')) {
-      S.events = S.events.filter(function (e) { return !/^work-/.test(e.id); });
-    }
+    if (!plans.length) return 'No events found in that calendar file between last week and 200 days ahead.';
+    var oldDiary = S.events.filter(function (e) { return /^work-/.test(e.id); }).length;
     var before = S.events.filter(function (e) { return e.feed === 'outlook'; }).length;
-    S.events = S.events.filter(function (e) { return e.feed !== 'outlook'; }).concat(plans);
+    S.events = S.events.filter(function (e) { return e.feed !== 'outlook' && !/^work-/.test(e.id); }).concat(plans);
     LINKS.outlookAt = new Date().toISOString(); saveLinks();
-    save(); render();
-    toast(before ? 'Outlook updated: ' + plural(plans.length, 'event', 'events') : 'Added ' + plural(plans.length, 'Outlook event', 'Outlook events'));
+    save();
+    return (before ? 'Outlook updated: ' : 'Added ') + plural(plans.length, 'Outlook event', 'Outlook events') + '.' +
+      (oldDiary ? ' Replaced the ' + oldDiary + ' work diary plans loaded earlier.' : '');
   }
 
   /* ------------------------------------------------------------------ Clash detection
@@ -755,7 +754,8 @@
           '<div class="actions"><button class="btn" type="button" data-action="backup">Back up to a file</button>' +
           '<label class="btn ghost">Restore from a file<input type="file" accept="application/json,.json" data-input="restore" hidden></label></div></section>' +
         '<section class="panel"><h2>Add from a file</h2><p>Add an Outlook calendar file (.ics), or plans, tasks, habits and notes from a Life Organizer file, without replacing what’s already here. Loading a new Outlook file updates your work calendar.</p>' +
-          '<div class="actions"><label class="btn ghost">Choose a file to add<input type="file" data-input="merge" hidden></label></div></section>' +
+          '<div class="actions"><label class="btn ghost">Choose a file to add<input type="file" data-input="merge" hidden></label></div>' +
+          '<p class="import-status" id="import-status" role="status">' + (LINKS.lastImport ? esc(LINKS.lastImport.msg) + ' <span>' + esc(relDate(iso(new Date(LINKS.lastImport.at)))) + ' at ' + esc(new Date(LINKS.lastImport.at).toTimeString().slice(0, 5)) + '</span>' : '') + '</p></section>' +
         '<section class="panel"><h2>Install</h2><p><b>Android:</b> open the browser menu and choose <i>Install app</i> or <i>Add to Home screen</i>. <b>iPhone or iPad:</b> in Safari, Share → Add to Home Screen.</p></section>' +
         '<section class="panel"><h2>Start over</h2><p>Erase everything on this device. This can’t be undone, so back up first.</p><button class="btn danger" type="button" data-action="erase">Erase all data</button></section>';
     }
@@ -953,15 +953,25 @@
       saveLinks(); render(); toast(ev.target.checked ? 'Included' : 'Hidden from your plans'); return;
     }
     if (ev.target.getAttribute('data-input') === 'merge') {
-      var mi = ev.target, mf = mi.files[0]; if (!mf) return;
-      mf.text().then(function (txt) {
-        if (/^\uFEFF?\s*BEGIN:VCALENDAR/i.test(txt)) { importICS(txt); return; }
-        var d = JSON.parse(txt);
-        if (!d || d.v !== 1) throw new Error('bad');
-        var n = merge(d); save(); render();
-        toast(n ? 'Added ' + plural(n, 'item', 'items') : 'Nothing new to add');
-      }).catch(function () { toast('That isn’t a calendar (.ics) or Life Organizer file'); })
-        .finally(function () { mi.value = ''; });
+      var mi = ev.target, mf = mi.files && mi.files[0];
+      if (!mf) { importStatus('No file was chosen. Try again, and pick the file from Downloads.', true); return; }
+      importStatus('Reading ' + (mf.name || 'file') + '…');
+      readFile(mf).then(function (txt) {
+        return new Promise(function (done) { setTimeout(function () { done(txt); }, 30); });   // let “Reading…” show first
+      }).then(function (txt) {
+        var msg;
+        if (/^\uFEFF?\s*BEGIN:VCALENDAR/i.test(txt)) msg = importICS(txt);
+        else {
+          var d; try { d = JSON.parse(txt); } catch (e) { d = null; }
+          if (!d || d.v !== 1) { importStatus('That isn’t a calendar (.ics) or Life Organizer file' + (mf.name ? ' (' + mf.name + ')' : '') + '.', true); return; }
+          var n = merge(d); save();
+          msg = n ? 'Added ' + plural(n, 'item', 'items') + '.' : 'Nothing new to add: everything in that file is already here.';
+        }
+        LINKS.lastImport = { at: new Date().toISOString(), msg: msg }; saveLinks();
+        render(); toast(msg.split('.')[0]);
+      }).catch(function (err) {
+        importStatus('Couldn’t read that file' + (err && err.message ? ': ' + err.message : '') + '. Try downloading it again.', true);
+      }).then(function () { mi.value = ''; });
       return;
     }
     if (ev.target.getAttribute('data-input') !== 'restore') return;
@@ -974,6 +984,16 @@
     }).catch(function () { toast('That file isn’t a Life Organizer backup'); })
       .finally(function () { input.value = ''; });
   });
+
+  function readFile(f) {
+    if (f.text) return f.text();
+    return new Promise(function (ok, fail) { var r = new FileReader(); r.onload = function () { ok(r.result); }; r.onerror = function () { fail(r.error); }; r.readAsText(f); });
+  }
+  function importStatus(msg, bad) {
+    var el = document.getElementById('import-status');
+    if (el) { el.textContent = msg; el.classList.toggle('bad', !!bad); }
+    toast(msg.length > 60 ? msg.split('.')[0] : msg);
+  }
 
   function backup() {
     var blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' });
