@@ -7,8 +7,8 @@
 
   /* ------------------------------------------------------------------ Storage */
   var KEY = 'lo:data:v1';
-  var APP_VERSION = '21';
-  var EMPTY = function () { return { v: 1, tasks: [], habits: [], events: [], notes: [], ack: {} }; };
+  var APP_VERSION = '22';
+  var EMPTY = function () { return { v: 1, tasks: [], habits: [], events: [], notes: [], ack: {}, cats: { byId: {}, byTitle: {} } }; };
 
   function normalise(d) {
     var base = EMPTY();
@@ -16,6 +16,8 @@
     ['tasks', 'habits', 'events', 'notes'].forEach(function (k) { base[k] = Array.isArray(d[k]) ? d[k] : []; });
     base.habits.forEach(function (h) { if (!h.log || typeof h.log !== 'object') h.log = {}; });
     base.ack = d.ack && typeof d.ack === 'object' ? d.ack : {};   // dismissed clash flags
+    var c = d.cats && typeof d.cats === 'object' ? d.cats : {};     // who each plan is for: by plan, or by title
+    base.cats = { byId: c.byId && typeof c.byId === 'object' ? c.byId : {}, byTitle: c.byTitle && typeof c.byTitle === 'object' ? c.byTitle : {} };
     return base;
   }
   function load() {
@@ -558,12 +560,22 @@
   function cats() {
     return [{ id: 'work', label: 'Work' }, { id: 'personal', label: 'Personal' }, { id: 'douglas', label: 'Douglas' }, { id: 'dorothea', label: dorotheaName() }];
   }
-  function catOf(e) {
-    if (e.src === 'xp') return 'douglas';
+  /* Who a plan is for. Your choice wins (one plan, or every plan with that title); otherwise a sensible guess:
+     Outlook and labelled work -> Work; Douglas's planner by its "who"; the Health app -> Dorothea;
+     titles naming a child -> that child; everything else -> Personal (yours). */
+  function titleKey(t) { return String(t || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+  function catGuess(e) {
+    if (e.feed === 'outlook' || baseWork(e)) return 'work';
     if (e.src === 'health') return 'dorothea';
-    if (e.feed === 'outlook' || isWork(e)) return 'work';
+    if (e.src === 'xp') return /^doro/i.test(e.who || '') ? 'dorothea' : /^dad$/i.test(e.who || '') ? 'personal' : 'douglas';
+    if (/\bdoro(thea)?\b/i.test(e.title)) return 'dorothea';
+    if (/\bdoug(las|ie)?\b/i.test(e.title)) return 'douglas';
     return 'personal';
   }
+  function catOf(e) {
+    return S.cats.byId[e.id] || S.cats.byTitle[titleKey(e.title)] || catGuess(e);
+  }
+  function chosenCat(e) { return S.cats.byId[e.id] || S.cats.byTitle[titleKey(e.title)] || ''; }
   function catLabel(id) { var c = cats().filter(function (x) { return x.id === id; })[0]; return c ? c.label : id; }
   if (!LINKS.hideCat) LINKS.hideCat = {};
   function shown() { return allEvents().filter(function (e) { return !LINKS.hideCat[catOf(e)]; }); }
@@ -655,6 +667,25 @@
       '<button class="btn ghost more-days" type="button" data-action="more-days">Show 14 more days</button></section>';
   }
 
+  /* Sort categories: every non-Outlook title once, so recurring entries are sorted in one tap. */
+  function sorterSheet() {
+    var seen = {}, rows = [];
+    allEvents().filter(function (e) { return e.feed !== 'outlook' && !baseWork(e) && !isHoliday(e); }).forEach(function (e) {
+      var k = titleKey(e.title); if (!k) return;
+      if (!seen[k]) { seen[k] = { e: e, n: 0, src: e.src }; rows.push(seen[k]); }
+      seen[k].n++;
+    });
+    rows.sort(function (a, b) { return (chosenCat(a.e) ? 1 : 0) - (chosenCat(b.e) ? 1 : 0) || (a.e.title < b.e.title ? -1 : 1); });
+    return '<h2 id="sheet-title">Who’s it for?</h2><p class="hint">Choose once per title; every date with that title follows. Personal is just you: walks, haircuts, your own appointments.</p>' +
+      '<ul class="list sorter">' + rows.map(function (r) {
+        var cur = catOf(r.e);
+        return '<li class="sort-row"><div class="row-body"><span class="row-title">' + esc(r.e.title) + '</span><span class="meta">' + plural(r.n, 'date', 'dates') +
+          (r.src === 'xp' ? ' · Douglas’s planner' : r.src === 'health' ? ' · Health app' : '') + (chosenCat(r.e) ? '' : ' · <i>guessed</i>') + '</span></div>' +
+          '<div class="segmented inline" role="group" aria-label="Who’s ' + esc(r.e.title) + ' for?">' + cats().filter(function (c) { return c.id !== 'work'; }).map(function (c) {
+            return '<button type="button" class="cat-' + c.id + '" data-action="sort-cat" data-t="' + esc(titleKey(r.e.title)) + '" data-c="' + c.id + '" aria-pressed="' + (cur === c.id) + '" aria-label="' + esc(c.label) + '">' + catDot(c.id) + '<span>' + esc(c.label.slice(0, 4) === 'Pers' ? 'Me' : c.label.split(' ')[0]) + '</span></button>';
+          }).join('') + '</div></li>';
+      }).join('') + '</ul><div class="sheet-actions"><button class="btn" type="button" data-action="close-sheet">Done</button></div>';
+  }
   function calendarView() {
     var modes = [['month', 'Month'], ['week', 'Week'], ['agenda', 'Agenda']];
     var body = state.calMode === 'week' ? weekLanes() : state.calMode === 'agenda' ? agendaRange() : '<div class="split cal-split">' + monthGrid() + '</div>';
@@ -662,7 +693,7 @@
         '<button class="key signal" type="button" data-action="new-plan" aria-label="Add a plan">' + icon('plus') + '</button>') +
       '<div class="cal-tools"><div class="segmented" role="group" aria-label="Calendar view">' + modes.map(function (m) {
         return '<button type="button" data-action="cal-mode" data-m="' + m[0] + '" aria-pressed="' + (state.calMode === m[0]) + '">' + m[1] + '</button>';
-      }).join('') + '</div>' + catFilter() + '</div>' + body;
+      }).join('') + '</div>' + catFilter() + '<button class="link" type="button" data-action="open-sorter">Sort categories</button></div>' + body;
   }
 
   /* ------------------------------------------------------------------ Clash detection
@@ -670,7 +701,8 @@
      Each upcoming day is checked; results are cached until the next save. */
   var flagCache = null;
   var HOLIDAY = /^(christmas day|boxing day|new year.s day|good friday|easter monday)|bank holiday/i;
-  function isWork(e) { return !!e.tag || /\(work\)/i.test(e.title); }
+  function baseWork(e) { return !!e.tag || /\(work\)/i.test(e.title); }
+  function isWork(e) { return catOf(e) === 'work'; }
   function isLeave(e) { return isWork(e) && (e.tag === 'Leave' || /\bleave\b/i.test(e.title)); }
   function isAway(e) { return isWork(e) && !isLeave(e) && (lastDay(e) !== e.date || /\btrip\b/i.test(e.title)); }
   function isBlock(e) {   // a block of time (e.g. a whole Tekever day) rather than a meeting
@@ -750,9 +782,9 @@
       var timedLife = away ? [] : life.filter(function (e) { return e.time; });   // when away, "needs cover" already says it
       for (var a = 0; a < timedLife.length; a++) for (var c = a + 1; c < timedLife.length; c++) {
         var A = timedLife[a], B = timedLife[c];
-        if ((A.who || 'You') !== (B.who || 'You') && overlaps(A, B)) push({ key: 'two|' + A.id + '|' + B.id, pair: 'two|' + A.title + '|' + B.title, kind: 'two', sev: 'check', day: d,
+        if (catOf(A) !== catOf(B) && overlaps(A, B)) push({ key: 'two|' + A.id + '|' + B.id, pair: 'two|' + A.title + '|' + B.title, kind: 'two', sev: 'check', day: d,
           ids: [A.id, B.id], title: 'Two things at once: ' + A.title + ' and ' + B.title,
-          detail: times(A) + ' (' + (A.who || 'you') + ') and ' + times(B) + ' (' + (B.who || 'you') + ')', hint: 'Needs two adults, or a lift sorted' });
+          detail: times(A) + ' (' + catLabel(catOf(A)).replace('Personal', 'you') + ') and ' + times(B) + ' (' + catLabel(catOf(B)).replace('Personal', 'you') + ')', hint: 'Needs two adults, or a lift sorted' });
       }
       for (var i = 0; i < firm.length; i++) for (var j = i + 1; j < firm.length; j++) {
         if (overlaps(firm[i], firm[j])) push({ key: 'dbl|' + firm[i].id + '|' + firm[j].id, pair: 'dbl|' + firm[i].title + '|' + firm[j].title, kind: 'double', sev: 'clash', day: d,
@@ -1034,13 +1066,19 @@
   function field(label, name, type, value, extra) {
     return '<label class="field' + (extra && extra.wide ? ' wide' : '') + '"><span>' + label + '</span><input name="' + name + '" type="' + type + '" value="' + esc(value || '') + '"' + (extra && extra.attrs ? ' ' + extra.attrs : '') + '></label>';
   }
+  function catPicker(e) {
+    var cur = catOf(e), same = allEvents().filter(function (x) { return titleKey(x.title) === titleKey(e.title); }).length;
+    return '<div class="cat-pick"><span class="field-label">Who’s it for?</span><div class="segmented inline" role="group" aria-label="Who’s it for?">' +
+      cats().map(function (c) { return '<button type="button" class="cat-' + c.id + '" data-action="set-cat" data-id="' + esc(e.id) + '" data-c="' + c.id + '" aria-pressed="' + (cur === c.id) + '">' + catDot(c.id) + esc(c.label) + '</button>'; }).join('') + '</div>' +
+      (same > 1 ? '<label class="all-same"><input type="checkbox" id="cat-all" checked> All ' + same + ' plans called “' + esc(e.title) + '”</label>' : '') + '</div>';
+  }
   function planSheet(e, dayForNew) {
     var isNew = !e; e = e || { title: '', date: dayForNew || state.selDay, time: '', endTime: '', place: '' };
     return '<form data-form="save-plan" data-id="' + esc(e.id || '') + '" autocomplete="off"><h2 id="sheet-title">' + (isNew ? 'New plan' : 'Edit plan') + '</h2><div class="form">' +
       field('What', 'title', 'text', e.title, { wide: true, attrs: 'required data-autofocus' }) +
       field('Date', 'date', 'date', e.date, { attrs: 'required' }) + field('Until', 'end', 'date', e.end || '') +
       field('Starts', 'time', 'time', e.time) + field('Ends', 'endTime', 'time', e.endTime) +
-      field('Where', 'place', 'text', e.place, { wide: true }) + '</div>' +
+      field('Where', 'place', 'text', e.place, { wide: true }) + '</div>' + (isNew ? '' : catPicker(e)) +
       '<div class="sheet-actions"><button class="btn" type="submit">' + (isNew ? 'Add plan' : 'Save') + '</button>' +
       (isNew ? '' : '<button class="btn ghost danger-text" type="button" data-action="delete-plan" data-id="' + esc(e.id) + '">Delete</button>') +
       '<button class="link" type="button" data-action="close-sheet">Cancel</button></div></form>';
@@ -1052,7 +1090,7 @@
     return '<h2 id="sheet-title">' + catDot(catOf(e)) + esc(e.title) + '</h2>' +
       '<p class="sheet-when">' + esc(fmt(e.date, { weekday: 'long', day: 'numeric', month: 'long' })) + (lastDay(e) !== e.date ? ' – ' + esc(fmt(lastDay(e), { weekday: 'short', day: 'numeric', month: 'short' })) : '') + ' · ' + esc(times(e)) + '</p>' +
       (e.place ? '<p>' + esc(e.place) + '</p>' : '') +
-      '<p class="meta">' + esc(catLabel(catOf(e))) + (e.tag && e.tag !== 'Work' ? ' · ' + esc(e.tag) : '') + (e.who && e.who !== catLabel(catOf(e)) && e.who !== 'Family' ? ' · for ' + esc(e.who) : '') + '</p>' +
+      '<p class="meta">' + (e.tag && e.tag !== 'Work' ? esc(e.tag) + ' · ' : '') + (e.who && e.who !== catLabel(catOf(e)) && e.who !== 'Family' ? 'Planner says: ' + esc(e.who) : '') + '</p>' + catPicker(e) +
       (fl.length ? '<ul class="list sheet-flags">' + fl.map(function (f) { return '<li class="row">' + flagTag(f.sev) + '<span class="row-title">' + esc(f.title) + '</span></li>'; }).join('') + '</ul>' +
         '<a class="btn ghost" href="#/headsup" data-action="close-sheet">Decide in Heads up</a>' : '') +
       '<p class="hint">' + esc(src) + '</p><div class="sheet-actions"><button class="btn" type="button" data-action="close-sheet">Close</button></div>';
@@ -1135,6 +1173,19 @@
         state.weekStart = n ? addDays(state.weekStart, n) : monday(today());
         state.selDay = weekDays().indexOf(today()) > -1 ? today() : state.weekStart;
         render(); return;
+      case 'open-sorter': openSheet(sorterSheet()); return;
+      case 'sort-cat':
+        S.cats.byTitle[b.getAttribute('data-t')] = b.getAttribute('data-c'); save(); linkedCache = null; flagCache = null;
+        b.parentNode.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+        var gm = b.closest('.sort-row').querySelector('i'); if (gm) gm.parentNode.innerHTML = gm.parentNode.innerHTML.replace(' · <i>guessed</i>', '');
+        refreshWaiting = true; return;
+      case 'set-cat':
+        var se = findEvent(id), all = document.getElementById('cat-all'), cv = b.getAttribute('data-c');
+        if (!se) return;
+        if (all && all.checked) { S.cats.byTitle[titleKey(se.title)] = cv; delete S.cats.byId[se.id]; } else S.cats.byId[se.id] = cv;
+        save(); flagCache = null;
+        b.parentNode.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+        refreshWaiting = true; toast('Now under ' + catLabel(cv)); return;
       case 'cal-mode': state.calMode = b.getAttribute('data-m'); render(); return;
       case 'cal-day': state.selDay = b.getAttribute('data-d'); render();
         var ag = document.getElementById('agenda'); if (ag && window.matchMedia('(max-width: 599px)').matches) ag.scrollIntoView({ behavior: 'smooth', block: 'start' });
