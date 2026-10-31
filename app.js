@@ -98,6 +98,7 @@
     check: '<path d="m6 12.5 4 4 8-9"/>',
     moon: '<path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10Z"/>',
     sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>',
+    link: '<path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/>',
     trash: '<path d="M4.5 7h15M10 11v6M14 11v6M6.5 7l.8 11.6A2 2 0 0 0 9.3 20.5h5.4a2 2 0 0 0 2-1.9L17.5 7M9 7V5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5v2"/>'
   };
   function icon(name, cls) { return '<svg class="icon' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" aria-hidden="true">' + I[name] + '</svg>'; }
@@ -128,6 +129,7 @@
     document.getElementById('tabbar').innerHTML = ROUTES.map(function (r) { return navLink(r, cur); }).join('');
   }
   function render(navigated) {
+    linkedCache = null; flagCache = null;
     var r = route();
     renderNav(r.name);
     var main = document.getElementById('main');
@@ -181,11 +183,13 @@
     var span = spanLabel(e);
     var fl = flagFor(e);
     var meta = [span, e.place].filter(Boolean).map(esc).join(' · ') + (e.tag ? '<span class="tag">' + esc(e.tag) + '</span>' : '') +
+      (e.who ? '<span class="tag who" title="From ' + esc(e.srcName || '') + '">' + icon('link', 'tiny') + esc(e.who) + '</span>' : '') +
+      (e.deadline ? '<span class="tag">Deadline</span>' : '') +
       (fl ? '<span class="tag ' + fl + '">' + (fl === 'clash' ? 'Clash' : 'Check') + '</span>' : '');
     var when = e.time ? esc(e.time) + (e.endTime ? '<small>' + esc(e.endTime) + '</small>' : '') : 'All day';
     return '<li class="row plan' + (span ? ' multi' : '') + '"><span class="time">' + when + '</span>' +
       '<div class="row-body"><span class="row-title">' + esc(e.title) + '</span>' + (meta ? '<span class="meta">' + meta + '</span>' : '') + '</div>' +
-      del('delete-event', e.id, 'plan: ' + e.title) + '</li>';
+      (e.src ? '' : del('delete-event', e.id, 'plan: ' + e.title)) + '</li>';
   }
 
   function habitStreak(h) {
@@ -211,7 +215,7 @@
         '<button class="key ghost sm" type="button" data-action="week" data-n="7" aria-label="Next 7 days">' + icon('right') + '</button></span></div>' +
       '<div class="scale" role="group" aria-label="Choose a day">' +
         days.map(function (d) {
-          var n = S.events.filter(function (e) { return occursOn(e, d); }).length;
+          var n = allEvents().filter(function (e) { return occursOn(e, d); }).length;
           var fd = flagsOn(d), clash = fd.some(function (f) { return f.sev === 'clash'; });
           return '<button class="day' + (d === t ? ' is-today' : d < t ? ' is-past' : '') + (clash ? ' has-clash' : fd.length ? ' has-check' : '') + '" type="button" data-action="pick-day" data-d="' + d + '" aria-pressed="' + (d === state.selDay) + '" aria-label="' + esc(fmt(d, { weekday: 'long', day: 'numeric', month: 'long' })) + (n ? ', ' + plural(n, 'plan', 'plans') : '') + (fd.length ? ', ' + plural(fd.length, 'flag', 'flags') : '') + '">' +
             '<span class="dots">' + (n ? '<i></i>'.repeat(Math.min(n, 3)) : '') + '</span>' +
@@ -222,7 +226,7 @@
   }
   function agenda(day, plansOnly) {
     var t = today();
-    var plans = S.events.filter(function (e) { return occursOn(e, day); }).sort(sortEvents);
+    var plans = allEvents().filter(function (e) { return occursOn(e, day); }).sort(sortEvents);
     var tasks = plansOnly ? [] : S.tasks.filter(function (x) {
       if (day === t) return (!x.done && x.due && x.due <= t) || (x.done && x.doneAt === t);
       return x.due === day;
@@ -234,6 +238,124 @@
       (!plans.length && !tasks.length ? empty('Nothing planned for ' + esc(name) + '.' + (plansOnly ? '' : ' <a href="#/plans">Add a plan</a>')) : '');
   }
 
+
+  /* ------------------------------------------------------------------ Linked apps (read-only)
+     The XP app and the Health app are served from the same web address as this app, so their
+     saved data is readable in this browser. Nothing is copied: linked activities are read fresh
+     on every draw. Douglas's family planner can also be fetched from its Firebase store for the
+     weeks ahead, using the family code the XP app saved on this device. */
+  var LINKS_KEY = 'lo:links:v1';
+  var XP = { shared: 'douglasSharedV1', family: 'douglasFamilyCode', project: 'douglas-battle-pass', apiKey: 'AIzaSyCdS-73Pb77tgIZGskEU3MlyPac6BIT9l0' };
+  var DH = { data: 'dh:data:v1', notes: 'dh:notes:v1' };
+  var OTHER_ADULTS = /^(mum|nanny)$/i;
+  function readJSON(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
+  var LINKS = readJSON(LINKS_KEY) || {};
+  if (!LINKS.off) LINKS.off = {};
+  if (!LINKS.remote) LINKS.remote = {};
+  function saveLinks() { try { localStorage.setItem(LINKS_KEY, JSON.stringify(LINKS)); } catch (e) { /* storage full */ } }
+  function cleanTime(t) {
+    var m = String(t || '').match(/(\d{1,2})[:.](\d{2})\s*(am|pm)?/i);
+    if (!m) return '';
+    var h = +m[1]; if (m[3]) { h = h % 12 + (/pm/i.test(m[3]) ? 12 : 0); }
+    return h < 24 ? pad(h) + ':' + m[2] : '';
+  }
+  function familyCode() { var c = localStorage.getItem(XP.family); return c && /^[A-Za-z0-9]{20,64}$/.test(c) ? c : null; }
+
+  function xpEvents() {
+    var local = readJSON(XP.shared) || {}, weeks = {};
+    Object.keys(LINKS.remote).forEach(function (w) { weeks[w] = LINKS.remote[w]; });
+    Object.keys(local).forEach(function (w) { if (/^W\d{8}$/.test(w)) weeks[w] = local[w]; });   // this device's copy is the freshest
+    var out = [];
+    Object.keys(weeks).forEach(function (w) {
+      var mon = w.slice(1, 5) + '-' + w.slice(5, 7) + '-' + w.slice(7, 9), items = (weeks[w] || {}).items || {};
+      Object.keys(items).forEach(function (id) {
+        var it = items[id];
+        if (!it || !it.text || typeof it.day !== 'number' && !/^\d$/.test(it.day)) return;
+        var who = it.who && it.who !== 'Everyone' ? it.who : 'Family';
+        out.push({ id: 'xp:' + w + ':' + id, title: it.text, date: addDays(mon, +it.day), time: cleanTime(it.time), place: '',
+          who: who, src: 'xp', srcName: 'Douglas’s planner' });
+      });
+    });
+    return out;
+  }
+  function healthEvents() {
+    var D = readJSON(DH.data) || {}, N = readJSON(DH.notes) || {};
+    var name = (D.child && (D.child.shortName || D.child.name)) || 'Dorothea';
+    var day = /^\d{4}-\d{2}-\d{2}$/, out = [];
+    (Array.isArray(D.appointments) ? D.appointments : []).concat(Array.isArray(N.appts) ? N.appts : []).forEach(function (a, i) {
+      if (!a || !day.test(a.date || '') || a.status === 'done' || a.status === 'cancelled') return;
+      out.push({ id: 'dh:' + (a.id || i), title: a.title || 'Appointment', date: a.date, time: cleanTime(a.time),
+        place: [a.with, a.where].filter(Boolean).join(', '), who: name, src: 'health', srcName: name + '’s health' });
+    });
+    (Array.isArray(D.keyDates) ? D.keyDates : []).forEach(function (k, i) {
+      if (!k || k.type !== 'deadline' || !day.test(k.date || '')) return;
+      out.push({ id: 'dh:k:' + (k.id || k.date + i), title: k.label || 'Deadline', date: k.date, time: '', place: '',
+        who: name, src: 'health', srcName: name + '’s health', deadline: true });
+    });
+    return out;
+  }
+  var linkedCache = null;
+  function linked() {
+    if (linkedCache) return linkedCache;
+    var out = [];
+    if (!LINKS.off.xp) out = out.concat(xpEvents());
+    if (!LINKS.off.health) out = out.concat(healthEvents());
+    return (linkedCache = out);
+  }
+  function allEvents() { return S.events.concat(linked()); }
+
+  /* Firestore REST: fetch Douglas's planner for this week and the next 7. */
+  function fsVal(v) {
+    if (!v || typeof v !== 'object') return null;
+    if ('stringValue' in v) return v.stringValue;
+    if ('integerValue' in v) return +v.integerValue;
+    if ('doubleValue' in v) return +v.doubleValue;
+    if ('booleanValue' in v) return v.booleanValue;
+    if ('mapValue' in v) { var o = {}, f = v.mapValue.fields || {}; Object.keys(f).forEach(function (k) { o[k] = fsVal(f[k]); }); return o; }
+    if ('arrayValue' in v) return (v.arrayValue.values || []).map(fsVal);
+    return null;
+  }
+  function fetchPlanner(quiet) {
+    var code = familyCode();
+    if (!code) { if (!quiet) toast('No family code on this device yet. Open the XP app here first.'); return Promise.resolve(); }
+    var start = monday(today()), jobs = [];
+    for (var i = 0; i < 8; i++) (function (mon) {
+      var w = 'W' + mon.replace(/-/g, '');
+      var url = 'https://firestore.googleapis.com/v1/projects/' + XP.project + '/databases/(default)/documents/families/' + code + w + '?key=' + XP.apiKey;
+      jobs.push(fetch(url).then(function (r) {
+        if (r.status === 404) return { w: w, data: { items: {} } };
+        if (!r.ok) throw new Error(r.status);
+        return r.json().then(function (j) { var o = {}, f = j.fields || {}; Object.keys(f).forEach(function (k) { o[k] = fsVal(f[k]); }); return { w: w, data: o }; });
+      }));
+    })(addDays(start, 7 * i));
+    return Promise.all(jobs).then(function (res) {
+      res.forEach(function (x) { LINKS.remote[x.w] = x.data; });
+      Object.keys(LINKS.remote).forEach(function (w) { if (w < 'W' + addDays(start, -7).replace(/-/g, '')) delete LINKS.remote[w]; });
+      LINKS.fetchedAt = new Date().toISOString(); saveLinks(); render();
+      if (!quiet) toast('Douglas’s planner updated');
+    }).catch(function () { if (!quiet) toast('Couldn’t reach the family planner. Showing what’s on this phone.'); });
+  }
+  function linkStatus() {
+    var xp = xpEvents(), dh = healthEvents(), t = today();
+    var D = readJSON(DH.data) || {}, name = (D.child && (D.child.shortName || D.child.name)) || 'Dorothea';
+    var xpAhead = xp.filter(function (e) { return e.date >= t; }).length, dhAppts = dh.filter(function (e) { return !e.deadline && e.date >= t; }).length;
+    var dhDead = dh.filter(function (e) { return e.deadline && e.date >= t; }).length;
+    function row(key, title, found, detail, missing, extra) {
+      return '<li class="link-row"><div class="row-body"><span class="row-title">' + title + '</span>' +
+        '<span class="meta">' + (found ? detail : missing) + '</span>' + (extra || '') + '</div>' +
+        (found ? '<label class="switch"><input type="checkbox" data-input="link-toggle" data-k="' + key + '"' + (LINKS.off[key] ? '' : ' checked') + '><span aria-hidden="true"></span><span class="visually-hidden">Include ' + title + '</span></label>' : '') + '</li>';
+    }
+    var hasXp = !!readJSON(XP.shared) || Object.keys(LINKS.remote).length || familyCode();
+    var fa = LINKS.fetchedAt ? new Date(LINKS.fetchedAt) : null;
+    var fetched = fa ? 'Family planner checked ' + relDate(iso(fa)).toLowerCase() + ' at ' + pad(fa.getHours()) + ':' + pad(fa.getMinutes()) + '.' : '';
+    return '<ul class="list links">' +
+      row('xp', 'Douglas’s planner (XP app)', hasXp, esc(plural(xpAhead, 'activity', 'activities')) + ' coming up. ' + esc(fetched),
+        'Not found in this browser. Open the XP app once on this phone, in the same browser, then come back.',
+        familyCode() ? '<button class="link" type="button" data-action="fetch-planner">Check the family planner now</button>' : '') +
+      row('health', esc(name) + '’s health (Family Hub)', !!(readJSON(DH.data) || readJSON(DH.notes)), esc(plural(dhAppts, 'appointment', 'appointments') + ' and ' + plural(dhDead, 'deadline', 'deadlines') + ' coming up.'),
+        'Not found in this browser. Open the Health app on this phone and load its data file, then come back.') +
+      '</ul>';
+  }
 
   /* ------------------------------------------------------------------ Clash detection
      Work = a plan with a category label, or "(work)" in its title. Everything else is life.
@@ -255,7 +377,8 @@
   function flags() {
     if (flagCache) return flagCache;
     var t = today(), byKey = {}, out = [];
-    var last = S.events.reduce(function (m, e) { return lastDay(e) > m ? lastDay(e) : m; }, t);
+    var ALL = allEvents();
+    var last = ALL.reduce(function (m, e) { return lastDay(e) > m ? lastDay(e) : m; }, t);
     if (last > addDays(t, 200)) last = addDays(t, 200);
     function push(f) {
       var had = byKey[f.key];
@@ -268,9 +391,13 @@
       f.days = [f.day]; byKey[f.key] = f; out.push(f);
     }
     for (var d = t; d <= last; d = addDays(d, 1)) {
-      var evs = S.events.filter(function (e) { return occursOn(e, d); });
+      var evs = ALL.filter(function (e) { return occursOn(e, d); });
       if (!evs.length) continue;
-      var work = evs.filter(isWork), life = evs.filter(function (e) { return !isWork(e) && !isHoliday(e); });
+      var work = evs.filter(isWork), life = evs.filter(function (e) { return !isWork(e) && !isHoliday(e) && !e.deadline; });
+      evs.forEach(function (e) {
+        if (e.deadline && e.date === d) push({ key: 'dead|' + e.id, kind: 'deadline', sev: 'check', day: d, ids: [e.id],
+          title: 'Deadline: ' + e.title, detail: e.srcName || '', hint: 'Preplanning: block time before it' });
+      });
       var leave = work.filter(isLeave)[0], away = work.filter(isAway)[0], hol = evs.filter(isHoliday)[0];
       var meetings = work.filter(function (e) { return e.time && !isLeave(e) && !isAway(e); });
       var real = meetings.filter(function (e) { return !isBlock(e); });
@@ -282,6 +409,12 @@
       if (hol && real.length) push({ key: 'hol|' + d, kind: 'holiday', sev: 'clash', day: d, ids: real.map(function (e) { return e.id; }),
         title: 'Work on ' + hol.title, detail: names(real, 3), hint: 'Probably cancelled: decline or check' });
       life.forEach(function (L) {
+        if (L.who && OTHER_ADULTS.test(L.who)) {   // someone else's commitment: a soft heads-up only
+          if (away || meetings.length) push({ key: 'adult|' + L.id, pair: 'adult|' + L.title, kind: 'adult', sev: 'check', day: d, ids: [L.id],
+            title: L.title + ' (' + L.who + ')', detail: away ? 'You’re away: ' + away.title : 'You’re working ' + meetings.slice().sort(function (a, b) { return mins(a.time) - mins(b.time); })[0].time + ' onwards',
+            hint: L.who + '’s down for this: just confirm' });
+          return;
+        }
         if (away) {
           push({ key: 'away|' + L.id + '|' + away.id, pair: 'away|' + L.title + '|' + away.title, kind: 'away', sev: 'clash', day: d, ids: [L.id],
             title: L.title + ' while you’re away', detail: away.title + (away.place ? ' · ' + away.place : ''), hint: 'Arrange cover, or move it' });
@@ -301,6 +434,13 @@
         push({ key: 'check|' + L.id, pair: 'check|' + L.title + '|' + main.map(function (w) { return w.title; }).sort().join('+'), kind: 'check', sev: 'check', day: d, ids: [L.id],
           title: L.title + ' on a working day', detail: 'Work ' + byTime[0].time + '–' + hhmm(endM) + ' · ' + names(main, 2), hint: 'Who’s covering? Plan ahead' });
       });
+      var timedLife = life.filter(function (e) { return e.time; });
+      for (var a = 0; a < timedLife.length; a++) for (var c = a + 1; c < timedLife.length; c++) {
+        var A = timedLife[a], B = timedLife[c];
+        if ((A.who || 'You') !== (B.who || 'You') && overlaps(A, B)) push({ key: 'two|' + A.id + '|' + B.id, pair: 'two|' + A.title + '|' + B.title, kind: 'two', sev: 'check', day: d,
+          ids: [A.id, B.id], title: 'Two things at once: ' + A.title + ' and ' + B.title,
+          detail: times(A) + ' (' + (A.who || 'you') + ') and ' + times(B) + ' (' + (B.who || 'you') + ')', hint: 'Needs two adults, or a lift sorted' });
+      }
       for (var i = 0; i < real.length; i++) for (var j = i + 1; j < real.length; j++) {
         if (overlaps(real[i], real[j])) push({ key: 'dbl|' + real[i].id + '|' + real[j].id, pair: 'dbl|' + real[i].title + '|' + real[j].title, kind: 'double', sev: 'clash', day: d,
           ids: [real[i].id, real[j].id], title: 'Double-booked: ' + real[i].title + ' and ' + real[j].title, detail: times(real[i]) + ' and ' + times(real[j]), hint: 'Pick one, or send apologies' });
@@ -359,7 +499,7 @@
     today: function () {
       var t = today();
       var open = S.tasks.filter(function (x) { return !x.done && x.due && x.due <= t; }).length;
-      var plansToday = S.events.filter(function (e) { return occursOn(e, t); }).length;
+      var plansToday = allEvents().filter(function (e) { return occursOn(e, t); }).length;
       var habitsLeft = S.habits.filter(function (h) { return !h.log[t]; }).length;
       var soon = flags().filter(function (f) { return f.sev === 'clash' && f.days[0] <= addDays(t, 7); }).length;
       var sub = [plural(open, 'task due', 'tasks due'), plural(plansToday, 'plan', 'plans')].concat(soon ? [plural(soon, 'clash', 'clashes') + ' this week'] : [])
@@ -382,7 +522,7 @@
 
     plans: function () {
       var t = today();
-      var past = S.events.filter(function (e) { return lastDay(e) < t; }).sort(sortEvents).reverse().slice(0, 8);
+      var past = allEvents().filter(function (e) { return lastDay(e) < t; }).sort(sortEvents).reverse().slice(0, 8);
       return head('Plans', 'Appointments, birthdays, trips: anything with a date.') +
         '<form class="compose" data-form="event" autocomplete="off">' +
           '<div class="quick"><label class="visually-hidden" for="pt">New plan</label>' +
@@ -399,7 +539,7 @@
           '<section class="panel sticky" aria-labelledby="h-week"><h2 id="h-week" class="visually-hidden">Week</h2>' + dial() + '<div id="agenda" data-plans-only>' + agenda(state.selDay, true) + '</div></section>' +
           '<div class="stack">' + headsUp(0, 5) + '<section class="panel" aria-labelledby="h-up"><h2 id="h-up">Coming up</h2><div id="upcoming">' + upcomingList() + '</div></section>' +
           (past.length ? '<section class="panel quiet" aria-labelledby="h-past"><h2 id="h-past">Recent</h2><ul class="list">' + past.map(function (e) {
-            return '<li class="row plan"><span class="time">' + esc(fmt(e.date, { day: 'numeric', month: 'short' })) + '</span><div class="row-body"><span class="row-title">' + esc(e.title) + '</span></div>' + del('delete-event', e.id, 'plan: ' + e.title) + '</li>';
+            return '<li class="row plan"><span class="time">' + esc(fmt(e.date, { day: 'numeric', month: 'short' })) + '</span><div class="row-body"><span class="row-title">' + esc(e.title) + '</span></div>' + (e.src ? '' : del('delete-event', e.id, 'plan: ' + e.title)) + '</li>';
           }).join('') + '</ul></section>' : '') + '</div>' +
         '</div>';
     },
@@ -461,6 +601,7 @@
           [['light', 'Light'], ['dark', 'Dark'], ['system', 'Match device']].map(function (o) {
             return '<button type="button" data-action="set-theme" data-t="' + o[0] + '" aria-pressed="' + (tp === o[0]) + '">' + o[1] + '</button>';
           }).join('') + '</div></section>' +
+        '<section class="panel"><h2>Linked apps</h2><p>Activities from the family’s other apps on this phone appear in your plans and are checked for clashes. They’re read live and never copied; change them in their own app.</p>' + linkStatus() + '</section>' +
         '<section class="panel"><h2>Your data</h2><p>Everything is stored on this device only: ' + esc(counts) + '. Back up regularly, and use a backup to copy your data to another phone or computer.</p>' +
           '<div class="actions"><button class="btn" type="button" data-action="backup">Back up to a file</button>' +
           '<label class="btn ghost">Restore from a file<input type="file" accept="application/json,.json" data-input="restore" hidden></label></div></section>' +
@@ -474,11 +615,11 @@
   /* Coming up: every future plan except the day tuned on the dial, which the Week panel already shows. */
   function upcomingList() {
     var t = today(), groups = [], cur = null;
-    S.events.filter(function (e) { return lastDay(e) >= t && !occursOn(e, state.selDay); }).sort(sortEvents).forEach(function (e) {
+    allEvents().filter(function (e) { return lastDay(e) >= t && !occursOn(e, state.selDay); }).sort(sortEvents).forEach(function (e) {
       var key = e.date < t ? t : e.date;   // a plan already under way is listed under today
       if (!cur || cur.date !== key) { cur = { date: key, items: [] }; groups.push(cur); } cur.items.push(e);
     });
-    if (!groups.length) return empty(S.events.some(function (e) { return lastDay(e) >= t; }) ? 'Nothing else planned.' : 'Nothing planned yet. Add your first plan above.');
+    if (!groups.length) return empty(allEvents().some(function (e) { return lastDay(e) >= t; }) ? 'Nothing else planned.' : 'Nothing planned yet. Add your first plan above.');
     return groups.map(function (g) {
       var rel = relDate(g.date), named = rel === 'Today' || rel === 'Tomorrow';
       return '<div class="date-group"><h3 class="date-label"><span class="big">' + parse(g.date).getDate() + '</span><span>' + esc(named ? rel : fmt(g.date, { weekday: 'long' })) + '<small>' + esc(fmt(g.date, { month: 'long', year: 'numeric' })) + '</small></span></h3>' +
@@ -591,6 +732,7 @@
       case 'toggle-theme': setTheme(isDark() ? 'light' : 'dark'); if (route().name === 'settings') render(); return;
       case 'set-theme': setTheme(b.getAttribute('data-t')); render(); return;
       case 'ack': S.ack[b.getAttribute('data-k')] = today(); toast(b.getAttribute('data-k').indexOf('|') > -1 && b.classList.contains('link') ? 'Won’t flag that pairing again' : 'Dismissed'); break;
+      case 'fetch-planner': b.disabled = true; b.textContent = 'Checking…'; fetchPlanner(false); return;
       case 'all-flags': state.allFlags = true; render(); return;
       case 'backup': backup(); return;
       case 'erase': if (!confirm('Erase all your tasks, habits, plans and notes on this device?')) return; S = EMPTY(); toast('Everything erased'); break;
@@ -656,6 +798,11 @@
   }
 
   document.addEventListener('change', function (ev) {
+    if (ev.target.getAttribute('data-input') === 'link-toggle') {
+      var lk = ev.target.getAttribute('data-k');
+      if (ev.target.checked) delete LINKS.off[lk]; else LINKS.off[lk] = true;
+      saveLinks(); render(); toast(ev.target.checked ? 'Included' : 'Hidden from your plans'); return;
+    }
     if (ev.target.getAttribute('data-input') === 'merge') {
       var mi = ev.target, mf = mi.files[0]; if (!mf) return;
       mf.text().then(function (txt) {
@@ -688,7 +835,14 @@
   }
 
   window.addEventListener('hashchange', function () { render(true); window.scrollTo(0, 0); });
-  window.addEventListener('storage', function (e) { if (e.key === KEY) { S = load(); render(); } if (e.key === THEME_KEY) applyTheme(); });
+  window.addEventListener('storage', function (e) { if (e.key === KEY) { S = load(); render(); } if (e.key === THEME_KEY) applyTheme();
+    if ([XP.shared, DH.data, DH.notes, XP.family].indexOf(e.key) > -1) render(); });
+  window.addEventListener('focus', function () {   // pick up changes made in the other apps
+    var ae = document.activeElement;
+    if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && ae.value) return;   // don't wipe a half-typed entry
+    render();
+  });
+  if (familyCode() && navigator.onLine && (!LINKS.fetchedAt || Date.now() - Date.parse(LINKS.fetchedAt) > 3 * 36e5)) fetchPlanner(true);
   applyTheme();
   render();
 })();

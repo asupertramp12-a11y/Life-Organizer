@@ -23,6 +23,7 @@ Quick check-ins through the day on the cover screen; unfolded for looking across
 - Plain HTML/CSS/JS, no build step, all files at the repo root, deployed on GitHub Pages.
 - Data in localStorage only; personal data must never be committed to the public repo.
 - Priority surfaces: Plans and Notes, then the Today overview.
+- Linked apps: reads the XP Reward app's Family Planner (Douglas) and the Health app's appointments and deadlines (Dorothea) from the same browser, read-only, and checks them for clashes with life and work plans. The only network call is a read of the family planner from its existing Firebase store.
 
 ## Brand Commitments
 - Name: Life Organizer.

@@ -459,3 +459,19 @@ select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmln
   content: ""; position: absolute; bottom: 3px; left: 50%; width: 16px; height: 2.5px; margin-left: -8px; border-radius: 2px; background: var(--late);
 }
 .day.has-check::after { background: var(--ring); }
+
+/* ------------------------------------------------------------ Linked apps */
+.tag.who { display: inline-flex; align-items: center; gap: 4px; background: var(--panel); color: var(--ink); border-color: var(--line-2); }
+.tag.who .icon { width: 12px; height: 12px; color: var(--ink-2); }
+.links .link-row { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) 0; border-top: 1px solid var(--line); }
+.links .link-row:first-child { border-top: 0; }
+.links .meta { display: block; }
+.links .link { padding: 6px 0 0; min-height: 0; }
+.switch { position: relative; flex: none; width: 52px; height: 44px; display: grid; align-items: center; cursor: pointer; }
+.switch input { position: absolute; inset: 0; z-index: 1; opacity: 0; margin: 0; cursor: pointer; }
+.switch span[aria-hidden] { pointer-events: none; }
+.switch span[aria-hidden] { width: 46px; height: 28px; border-radius: 14px; background: var(--rail); border: 1px solid var(--ring); position: relative; transition: background-color .2s var(--ease); }
+.switch span[aria-hidden]::after { content: ""; position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 50%; background: var(--panel); box-shadow: var(--shadow-key); transition: transform .25s var(--ease); }
+.switch input:checked + span { background: var(--olive); border-color: var(--olive); }
+.switch input:checked + span::after { transform: translateX(18px); }
+.switch input:focus-visible + span { outline: 2px solid var(--signal); outline-offset: 2px; }

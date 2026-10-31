@@ -10,6 +10,15 @@ A private personal organizer that runs in your browser and can be added to your 
 - **Notes**: searchable notes you can pin, saved as you type.
 - **Settings**: light, dark or match-device appearance; back up to a file, restore on another device, or erase everything. The sun/moon button in the header (or at the foot of the side rail) switches theme in one tap.
 
+## Linked apps
+
+Life Organizer also shows activities from the family's other apps, when they're used in the same browser on the same device:
+
+- **Douglas's planner** (XP Reward app): the Family Planner's activities. Life Organizer also checks the family planner online for this week and the next 7, using the family code the XP app saved on the device.
+- **Dorothea's health** (Family Hub): appointments and deadlines.
+
+This works because all three apps are published under the same GitHub Pages address, so they can read each other's saved data in the browser. Linked activities are read live and never copied; edit them in their own app. Each link can be switched off in **Settings → Linked apps**.
+
 ## Your data stays on your device
 
 Nothing you enter goes into this repository or any server. It's saved in the browser on each device. Use **Settings → Back up** to download a backup file, and **Restore from file** to load it on another phone or computer.
