@@ -1,0 +1,521 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-31T21:00:00Z",
+  "title": "Design System: Life Organizer",
+  "extensions": {
+    "colorMeta": {
+      "ground": {
+        "role": "neutral",
+        "displayName": "Housing Grey",
+        "canonical": "oklch(94.0% 0.005 95.1)",
+        "tonalRamp": [
+          "#0B0B0A",
+          "#272624",
+          "#464542",
+          "#676663",
+          "#8A8986",
+          "#AFAEAB",
+          "#D1D1CE",
+          "#EFEEEC"
+        ]
+      },
+      "rail": {
+        "role": "neutral",
+        "displayName": "Rail Grey",
+        "canonical": "oklch(91.2% 0.007 97.4)",
+        "tonalRamp": [
+          "#0B0B0A",
+          "#272624",
+          "#464542",
+          "#676662",
+          "#8A8985",
+          "#AFAEAA",
+          "#D1D1CE",
+          "#EFEEEC"
+        ]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Panel White",
+        "canonical": "oklch(98.8% 0.003 106.4)",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#262625",
+          "#454544",
+          "#666664",
+          "#898988",
+          "#AEAEAC",
+          "#D1D1D0",
+          "#EEEEED"
+        ]
+      },
+      "sunk": {
+        "role": "neutral",
+        "displayName": "Recess",
+        "canonical": "oklch(96.1% 0.004 91.4)",
+        "tonalRamp": [
+          "#0B0B0A",
+          "#272625",
+          "#464543",
+          "#676664",
+          "#8A8987",
+          "#AEAEAC",
+          "#D1D1CF",
+          "#EFEEED"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Graphite",
+        "canonical": "oklch(23.1% 0.004 264.5)",
+        "tonalRamp": [
+          "#0B0B0C",
+          "#262628",
+          "#444547",
+          "#656668",
+          "#88898B",
+          "#ADAEB0",
+          "#D0D1D3",
+          "#EEEEF0"
+        ]
+      },
+      "ink-2": {
+        "role": "neutral",
+        "displayName": "Mid Graphite",
+        "canonical": "oklch(46.1% 0.005 271.3)",
+        "tonalRamp": [
+          "#0B0B0C",
+          "#262628",
+          "#444547",
+          "#656669",
+          "#88898C",
+          "#ADAEB0",
+          "#D0D1D3",
+          "#EEEEF0"
+        ]
+      },
+      "ink-3": {
+        "role": "neutral",
+        "displayName": "Quiet Graphite",
+        "canonical": "oklch(54.2% 0.005 271.3)",
+        "tonalRamp": [
+          "#0B0B0C",
+          "#262628",
+          "#444547",
+          "#656669",
+          "#88898C",
+          "#ADAEB0",
+          "#D0D1D3",
+          "#EEEEF0"
+        ]
+      },
+      "tick": {
+        "role": "neutral",
+        "displayName": "Tick Grey",
+        "canonical": "oklch(73.4% 0.004 106.5)",
+        "tonalRamp": [
+          "#0B0B0A",
+          "#262625",
+          "#454543",
+          "#666664",
+          "#898987",
+          "#AEAEAC",
+          "#D1D1CF",
+          "#EEEEED"
+        ]
+      },
+      "ring": {
+        "role": "neutral",
+        "displayName": "Ring Grey",
+        "canonical": "oklch(63.2% 0.006 106.6)",
+        "tonalRamp": [
+          "#0B0B0A",
+          "#272724",
+          "#454542",
+          "#666663",
+          "#898986",
+          "#AEAEAB",
+          "#D1D1CE",
+          "#EEEEEC"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "oklch(89.4% 0.008 91.5)",
+        "tonalRamp": [
+          "#0C0B09",
+          "#272623",
+          "#464541",
+          "#686661",
+          "#8B8984",
+          "#AFAEA9",
+          "#D2D1CD",
+          "#EFEEEB"
+        ]
+      },
+      "line-2": {
+        "role": "neutral",
+        "displayName": "Hairline Strong",
+        "canonical": "oklch(84.8% 0.010 93.6)",
+        "tonalRamp": [
+          "#0C0B09",
+          "#272623",
+          "#464540",
+          "#686660",
+          "#8B8983",
+          "#AFAEA9",
+          "#D2D1CD",
+          "#EFEEEB"
+        ]
+      },
+      "signal": {
+        "role": "primary",
+        "displayName": "Signal Orange",
+        "canonical": "oklch(63.3% 0.192 38.7)",
+        "tonalRamp": [
+          "#270000",
+          "#530000",
+          "#831200",
+          "#B62D00",
+          "#DC5B2E",
+          "#F98B68",
+          "#FFB698",
+          "#FFD9C0"
+        ]
+      },
+      "signal-ink": {
+        "role": "primary",
+        "displayName": "Signal Ink",
+        "canonical": "oklch(53.6% 0.164 38.9)",
+        "tonalRamp": [
+          "#230000",
+          "#4D0700",
+          "#7B2100",
+          "#AC3C0E",
+          "#D26440",
+          "#F09273",
+          "#FFBBA1",
+          "#FFDDC7"
+        ]
+      },
+      "signal-soft": {
+        "role": "primary",
+        "displayName": "Signal Wash",
+        "canonical": "oklch(94.7% 0.024 47.1)",
+        "tonalRamp": [
+          "#0F0A07",
+          "#2D2420",
+          "#4E423C",
+          "#72625B",
+          "#95867E",
+          "#B8ABA4",
+          "#DACEC9",
+          "#F6ECE8"
+        ]
+      },
+      "olive": {
+        "role": "secondary",
+        "displayName": "Done Olive",
+        "canonical": "oklch(53.3% 0.084 120.5)",
+        "tonalRamp": [
+          "#090D00",
+          "#232A08",
+          "#404A1F",
+          "#606D37",
+          "#83905C",
+          "#A8B488",
+          "#CCD7B2",
+          "#EAF3D5"
+        ]
+      },
+      "late": {
+        "role": "tertiary",
+        "displayName": "Late Brick",
+        "canonical": "oklch(52.0% 0.160 34.7)",
+        "tonalRamp": [
+          "#230000",
+          "#4D0700",
+          "#7B210A",
+          "#AB3C21",
+          "#D1644A",
+          "#EF917A",
+          "#FFBAA6",
+          "#FFDCCC"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Page titles; one per view."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Note title in the editor."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Panel headings and the dial date range."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Row titles and running text."
+      },
+      "reading": {
+        "displayName": "Reading",
+        "purpose": "Note editor body, 68ch max."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Field labels and row metadata."
+      },
+      "numeral-dial": {
+        "displayName": "Dial Numeral",
+        "purpose": "Day numbers on the week dial."
+      },
+      "numeral-date": {
+        "displayName": "Date Numeral",
+        "purpose": "Large day number heading each Coming up group."
+      }
+    },
+    "shadows": [
+      {
+        "name": "shadow-panel",
+        "value": "0 1px 0 rgba(255,255,255,.9) inset, 0 1px 2px rgba(28,29,31,.05), 0 10px 28px -16px rgba(28,29,31,.22)",
+        "purpose": "Panels, editor, expanded capture form."
+      },
+      {
+        "name": "shadow-key",
+        "value": "0 1px 0 rgba(255,255,255,.95) inset, 0 1px 1px rgba(28,29,31,.08), 0 3px 6px -3px rgba(28,29,31,.18)",
+        "purpose": "Raised controls: keys, ghost buttons, active rail item, selected segment, habit keys."
+      },
+      {
+        "name": "shadow-signal-key",
+        "value": "0 1px 0 rgba(255,255,255,.3) inset, 0 4px 10px -4px rgba(229,83,26,.7)",
+        "purpose": "The orange add key only."
+      },
+      {
+        "name": "shadow-button",
+        "value": "0 1px 0 rgba(255,255,255,.12) inset, 0 3px 8px -4px rgba(28,29,31,.5)",
+        "purpose": "Graphite primary button."
+      },
+      {
+        "name": "shadow-recess",
+        "value": "0 1px 2px rgba(28,29,31,.06) inset",
+        "purpose": "Dial scale (fainter on capture input)."
+      },
+      {
+        "name": "shadow-toast",
+        "value": "0 10px 24px -10px rgba(28,29,31,.6)",
+        "purpose": "Floating toast pill."
+      },
+      {
+        "name": "focus-halo",
+        "value": "0 0 0 3px rgba(229,83,26,.16)",
+        "purpose": "Input focus, with graphite border."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease",
+        "value": "cubic-bezier(.16, 1, .3, 1)",
+        "purpose": "The single easing for all movement."
+      },
+      {
+        "name": "press",
+        "value": ".12s",
+        "purpose": "Press translate/scale."
+      },
+      {
+        "name": "state",
+        "value": ".15s-.2s",
+        "purpose": "Colour and border changes."
+      },
+      {
+        "name": "reveal",
+        "value": ".25s-.35s",
+        "purpose": "Disclosure chevron, toast, agenda fade."
+      },
+      {
+        "name": "needle",
+        "value": ".5s",
+        "purpose": "Dial needle travel between days."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "rail",
+        "value": "600px",
+        "purpose": "Viewport: bottom tab bar becomes 88px rail."
+      },
+      {
+        "name": "rail-wide",
+        "value": "1100px",
+        "purpose": "Viewport: rail widens to 232px with labels beside icons."
+      },
+      {
+        "name": "split",
+        "value": "640px",
+        "purpose": "Container: two-column views, three-column forms, list+editor notes."
+      },
+      {
+        "name": "date-column",
+        "value": "1000px",
+        "purpose": "Container: Coming up groups gain a 150px date column."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Graphite text button for confirming actions.",
+      "html": "<button class=\"ds-btn\">Back up now</button>",
+      "css": ".ds-btn{font:600 15px/1 var(--font);display:inline-flex;align-items:center;gap:6px;min-height:46px;padding:0 18px;border:0;border-radius:var(--r-ctl);background:var(--ink);color:#fff;cursor:pointer;box-shadow:0 1px 0 rgba(255,255,255,.12) inset,0 3px 8px -4px rgba(28,29,31,.5);transition:transform .12s var(--ease),background-color .15s}.ds-btn:hover{background:#2C2D30}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:2px solid var(--signal);outline-offset:2px}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Raised panel-white secondary button.",
+      "html": "<button class=\"ds-btn-ghost\">Restore</button>",
+      "css": ".ds-btn-ghost{font:600 15px/1 var(--font);min-height:46px;padding:0 18px;border:1px solid var(--line);border-radius:var(--r-ctl);background:var(--panel);color:var(--ink);cursor:pointer;box-shadow:var(--shadow-key);transition:transform .12s var(--ease)}.ds-btn-ghost:active{transform:translateY(1px)}.ds-btn-ghost:focus-visible{outline:2px solid var(--signal);outline-offset:2px}"
+    },
+    {
+      "name": "Signal Key",
+      "kind": "button",
+      "refersTo": "key-signal",
+      "description": "Round orange add key; one per screen, beside capture.",
+      "html": "<button class=\"ds-key-signal\" aria-label=\"Add task\"><svg viewBox=\"0 0 24 24\" width=\"22\" height=\"22\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M12 5v14M5 12h14\"/></svg></button>",
+      "css": ".ds-key-signal{display:inline-grid;place-items:center;width:50px;height:50px;padding:0;border-radius:50%;border:1px solid var(--signal);background:var(--signal);color:#fff;cursor:pointer;box-shadow:0 1px 0 rgba(255,255,255,.3) inset,0 4px 10px -4px rgba(229,83,26,.7);transition:transform .12s var(--ease),background-color .15s}.ds-key-signal:hover{background:#D44812}.ds-key-signal:active{transform:translateY(1px) scale(.97)}.ds-key-signal:focus-visible{outline:2px solid var(--signal);outline-offset:2px}"
+    },
+    {
+      "name": "Capture Input",
+      "kind": "input",
+      "refersTo": "input-capture",
+      "description": "Pill capture field paired with the signal key.",
+      "html": "<input class=\"ds-capture\" placeholder=\"Add a task for today\">",
+      "css": ".ds-capture{font:400 16px var(--font);width:100%;min-height:50px;padding:0 20px;border:1px solid var(--line);border-radius:25px;background:var(--panel);color:var(--ink);caret-color:var(--signal);box-shadow:0 1px 2px rgba(28,29,31,.04) inset;transition:border-color .15s,box-shadow .15s}.ds-capture::placeholder{color:var(--ink-3)}.ds-capture:hover{border-color:var(--tick)}.ds-capture:focus{outline:none;border-color:var(--ink);box-shadow:0 0 0 3px rgba(229,83,26,.16)}"
+    },
+    {
+      "name": "Pill Toggle",
+      "kind": "chip",
+      "refersTo": "pill-button",
+      "description": "Small pill toggle that inverts to graphite when pressed.",
+      "html": "<button class=\"ds-pill\" aria-pressed=\"true\">Pinned</button> <button class=\"ds-pill\" aria-pressed=\"false\">Pin</button>",
+      "css": ".ds-pill{font:500 13px var(--font);min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--line-2);background:var(--panel);color:var(--ink);cursor:pointer}.ds-pill:hover{border-color:var(--ink-3)}.ds-pill[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:#fff}.ds-pill:focus-visible{outline:2px solid var(--signal);outline-offset:2px}"
+    },
+    {
+      "name": "Tag",
+      "kind": "chip",
+      "refersTo": "tag",
+      "description": "List-name tag; high priority differs by ink weight, not colour.",
+      "html": "<span class=\"ds-tag ds-hot\">High</span> <span class=\"ds-tag\">Home</span>",
+      "css": ".ds-tag{font:500 12px var(--font);padding:1px 8px;border-radius:999px;background:var(--sunk);color:var(--ink-2);border:1px solid var(--line)}.ds-tag.ds-hot{color:var(--ink);font-weight:600;border-color:var(--ring)}"
+    },
+    {
+      "name": "Panel with Task Rows",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Panel-white container with hairline rows and round checks; olive when done.",
+      "html": "<section class=\"ds-panel\"><h2 class=\"ds-h2\">Anytime</h2><div class=\"ds-row\"><button class=\"ds-check\" aria-pressed=\"false\" aria-label=\"Done\"></button><span>Sort out the loft</span></div><div class=\"ds-row\"><button class=\"ds-check\" aria-pressed=\"true\" aria-label=\"Done\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m5 12.5 4.5 4.5L19 7.5\"/></svg></button><span class=\"ds-done\">Pick up prescription</span></div></section>",
+      "css": ".ds-panel{font:400 16px/1.5 var(--font);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:var(--r-panel);box-shadow:var(--shadow-panel);padding:24px 24px 16px}.ds-h2{margin:0 0 12px;font-size:17px;font-weight:600;letter-spacing:-.01em}.ds-row{display:flex;align-items:center;gap:12px;min-height:56px;border-top:1px solid var(--line)}.ds-row:first-of-type{border-top:0}.ds-check{display:grid;place-items:center;width:28px;height:28px;padding:0;border-radius:50%;background:var(--panel);border:1.5px solid var(--ring);color:transparent;cursor:pointer;transition:background-color .2s var(--ease),border-color .2s,transform .12s var(--ease)}.ds-check:hover{border-color:var(--ink-2)}.ds-check:active{transform:scale(.92)}.ds-check:focus-visible{outline:2px solid var(--signal);outline-offset:2px}.ds-check[aria-pressed=true]{background:var(--olive);border-color:var(--olive);color:#fff}.ds-done{color:var(--ink-3);text-decoration:line-through;text-decoration-color:var(--tick)}"
+    },
+    {
+      "name": "Rail Navigation",
+      "kind": "nav",
+      "refersTo": "nav",
+      "description": "Rail items; the current item lifts to a panel-white key.",
+      "html": "<nav class=\"ds-rail\"><a href=\"#\" aria-current=\"page\"><svg viewBox=\"0 0 24 24\" width=\"20\" height=\"20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\"><circle cx=\"12\" cy=\"12\" r=\"8.5\"/><path d=\"M12 7.5V12l3 2\"/></svg>Today</a><a href=\"#\"><svg viewBox=\"0 0 24 24\" width=\"20\" height=\"20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\"><rect x=\"4\" y=\"5.5\" width=\"16\" height=\"14\" rx=\"2\"/><path d=\"M4 10h16M8.5 3.5v4M15.5 3.5v4\"/></svg>Plans</a></nav>",
+      "css": ".ds-rail{display:grid;gap:4px;width:232px;padding:16px;background:var(--rail)}.ds-rail a{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:var(--r-ctl);font:500 15px var(--font);color:var(--ink-2);text-decoration:none;transition:background-color .2s,color .2s}.ds-rail a:hover{color:var(--ink);background:rgba(255,255,255,.45)}.ds-rail a[aria-current=page]{background:var(--panel);color:var(--ink);box-shadow:var(--shadow-key)}.ds-rail a:focus-visible{outline:2px solid var(--signal);outline-offset:2px}"
+    },
+    {
+      "name": "Week Dial",
+      "kind": "custom",
+      "refersTo": "dial-scale",
+      "description": "Monday-to-Sunday tuning scale; orange needle on the selected day.",
+      "html": "<div class=\"ds-scale\" style=\"--sel:5\"><button class=\"ds-day ds-past\"><span class=\"ds-dn\">Mon</span><span class=\"ds-num\">26</span></button><button class=\"ds-day ds-past\"><span class=\"ds-dn\">Tue</span><span class=\"ds-num\">27</span></button><button class=\"ds-day ds-past\"><span class=\"ds-dn\">Wed</span><span class=\"ds-num\">28</span></button><button class=\"ds-day ds-past\"><span class=\"ds-dn\">Thu</span><span class=\"ds-num\">29</span></button><button class=\"ds-day ds-past\"><span class=\"ds-dn\">Fri</span><span class=\"ds-num\">30</span></button><button class=\"ds-day ds-sel\"><span class=\"ds-dn\">Sat</span><span class=\"ds-num\">31</span></button><button class=\"ds-day\"><span class=\"ds-dn\">Sun</span><span class=\"ds-num\">1</span></button><span class=\"ds-needle\"></span></div>",
+      "css": ".ds-scale{position:relative;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-radius:var(--r-ctl);background:var(--sunk);box-shadow:0 1px 2px rgba(28,29,31,.06) inset;font-family:var(--font);font-variant-numeric:tabular-nums}.ds-scale::before{content:\"\";position:absolute;top:0;height:8px;left:calc(100%/14);right:calc(100%/14);background:repeating-linear-gradient(90deg,var(--tick) 0 1px,transparent 1px calc(100%/24));opacity:.7}.ds-day{position:relative;display:grid;justify-items:center;align-content:start;min-height:76px;padding:22px 0 8px;border:0;background:none;color:var(--ink-2);cursor:pointer;border-radius:var(--r-ctl);font:inherit}.ds-day::before{content:\"\";position:absolute;top:0;left:50%;width:1.5px;height:15px;margin-left:-.75px;background:var(--ink-2)}.ds-dn{font-size:12px;font-weight:500;letter-spacing:.02em}.ds-num{font-size:20px;font-weight:500;line-height:1.15;letter-spacing:-.02em;color:var(--ink)}.ds-past .ds-num,.ds-past .ds-dn{color:var(--ink-3)}.ds-sel .ds-num,.ds-sel .ds-dn{color:var(--signal-ink);font-weight:600}.ds-day:hover .ds-num{color:var(--signal-ink)}.ds-day:focus-visible{outline:2px solid var(--signal);outline-offset:-2px}.ds-needle{position:absolute;top:0;left:0;width:calc(100%/7);height:26px;pointer-events:none;transform:translateX(calc(var(--sel,0)*100%));transition:transform .5s var(--ease)}.ds-needle::before{content:\"\";position:absolute;left:50%;top:0;width:2.5px;height:20px;margin-left:-1.25px;background:var(--signal);border-radius:0 0 2px 2px}.ds-needle::after{content:\"\";position:absolute;left:50%;top:16px;width:7px;height:7px;margin-left:-3.5px;border-radius:50%;background:var(--signal);box-shadow:0 1px 3px rgba(229,83,26,.5)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Appliance Panel",
+    "overview": "Life Organizer is finished like a mid-century household appliance: a warm light-grey housing, white panels set into it with hairline edges and a soft drop beneath, graphite ink for everything that is read, and a single signal orange for the things that point at now. Every part has one job. Nothing on screen is decoration: the only \"ornament\" in the system is the tick scale of the week dial, and that is an instrument.\n\nDensity is calm rather than sparse. Rows are 56px tall with hairline dividers, panels pad at 16px on the cover screen and 24px once their container passes 640px, and type stays in a narrow range (13px labels to 34px page titles) so hierarchy is carried by weight, ink tone and placement rather than size jumps. Numbers are first-class: times, dates and the dial all use tabular figures so columns of time line up like a printed timetable.\n\nThe interface is light by commitment; a dark, moody look is out. The system rejects the category default of grey-on-white with a blue accent, and the cream-paper planner costume.",
+    "keyCharacteristics": [
+      "Warm grey housing, near-white panels, graphite ink; one orange signal, one olive for done.",
+      "Round keys for single-press actions (add, check, habit day); 12px-cornered rectangles for text controls.",
+      "Soft, low, layered shadows with a white inset top edge, like a moulded part catching light.",
+      "One self-hosted grotesk (Schibsted Grotesk) at weights 400 to 600, tabular numerals for all time.",
+      "The week dial: a Monday-to-Sunday tuning scale with an orange needle on the selected day."
+    ],
+    "rules": [
+      {
+        "name": "The One Signal Rule",
+        "body": "Orange marks where \"now\" is and the single primary action on a screen; it is never a decorative accent, a heading colour or a panel fill. If two orange things compete on one screen, one of them is wrong.",
+        "section": "colors"
+      },
+      {
+        "name": "The Olive Means Done Rule",
+        "body": "Olive appears only on completed state. Nothing else is green.",
+        "section": "colors"
+      },
+      {
+        "name": "The Timetable Rule",
+        "body": "Every time, date number and range is set in tabular figures so it aligns in a column.",
+        "section": "typography"
+      },
+      {
+        "name": "The Weight Not Size Rule",
+        "body": "Hierarchy steps by weight (400/500/600) and ink tone (ink, ink-2, ink-3) inside a narrow size range. Don't add sizes above 34px or new weights above 600.",
+        "section": "typography"
+      },
+      {
+        "name": "The Moulded Part Rule",
+        "body": "Raised things get a white inset top edge plus a soft graphite drop; pressed things move down 1px (`translateY(1px)`), and round keys also shrink to 0.97. Nothing glows except the signal key.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep orange to \"now\" and the one primary add per screen: the needle, today's marks, the signal key, focus and caret.",
+      "Do make single-press actions round keys and text actions 12px-cornered rectangles.",
+      "Do set every time, date and count in tabular figures.",
+      "Do give raised surfaces the white inset top edge plus a soft graphite drop, and pressed surfaces a 1px downward move.",
+      "Do keep touch targets at 44px or larger, extending small visuals (the 28px check) with an invisible hit area.",
+      "Do keep the week dial Monday to Sunday with the needle on the selected day."
+    ],
+    "donts": [
+      "Don't introduce a dark theme or a dark, moody look; the interface is light by commitment.",
+      "Don't add a second accent hue (no blue links, no coloured categories); tags differ by ink weight, not colour.",
+      "Don't use olive for anything but completion, or orange for anything but now and the primary action.",
+      "Don't use hard, unblurred offset shadows or heavy borders; edges are 1px hairlines.",
+      "Don't use pure white (#FFFFFF) or pure black as surfaces; panels are `panel`, ink is `ink`.",
+      "Don't add type sizes above 34px, weights above 600, or a second typeface."
+    ]
+  },
+  "themes": {
+    "dark": {
+      "selector": ":root[data-theme=dark] (or data-theme=system with prefers-color-scheme: dark)",
+      "default": false,
+      "colors": {
+        "ground": "#141516",
+        "rail": "#1A1B1D",
+        "panel": "#202124",
+        "sunk": "#18191B",
+        "ink": "#ECEBE7",
+        "ink-2": "#ABABA7",
+        "ink-3": "#8F8F8B",
+        "tick": "#55565A",
+        "ring": "#75767A",
+        "line": "#2D2E31",
+        "line-2": "#3B3C40",
+        "signal": "#EE5D22",
+        "signal-ink": "#FF8E5E",
+        "olive": "#76863F",
+        "late": "#F2775A",
+        "on-ink": "#141516"
+      }
+    }
+  }
+}

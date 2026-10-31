@@ -7,7 +7,7 @@ A private personal organizer that runs in your browser and can be added to your 
 - **Habits**: tick off each day and keep streaks.
 - **Plans**: appointments, birthdays, trips, anything with a date and time.
 - **Notes**: searchable notes you can pin, saved as you type.
-- **Settings**: back up to a file, restore on another device, or erase everything.
+- **Settings**: light, dark or match-device appearance; back up to a file, restore on another device, or erase everything. The sun/moon button in the header (or at the foot of the side rail) switches theme in one tap.
 
 ## Your data stays on your device
 
@@ -24,7 +24,7 @@ Never commit backup files to this repository. `.gitignore` blocks `life-organize
 ## Files
 
 Plain HTML, CSS and JavaScript with no build step. All files sit at the top level:
-`index.html`, `app.js`, `styles.css`, `manifest.webmanifest`, `logo.svg`, `favicon.svg`, `icon-192.png`, `icon-512.png`.
+`index.html`, `app.js`, `styles.css`, `schibsted-grotesk.woff2` (self-hosted font), `manifest.webmanifest`, `logo.svg`, `favicon.svg`, `icon-192.png`, `icon-512.png`. Design notes: `PRODUCT.md`, `DESIGN.md`.
 
 Run locally: `python3 -m http.server` and open http://localhost:8000.
 

@@ -58,6 +58,27 @@
     clearTimeout(toastTimer); toastTimer = setTimeout(function () { el.classList.remove('show'); }, 2600);
   }
 
+  /* ------------------------------------------------------------------ Theme: light (default), dark or match device */
+  var THEME_KEY = 'lo:theme';
+  var darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  function themePref() { try { return localStorage.getItem(THEME_KEY) || 'light'; } catch (e) { return 'light'; } }
+  function isDark() { var t = themePref(); return t === 'dark' || (t === 'system' && darkQuery.matches); }
+  function applyTheme() {
+    var root = document.documentElement, dark = isDark();
+    root.setAttribute('data-theme', themePref());
+    root.setAttribute('data-resolved', dark ? 'dark' : 'light');
+    document.querySelector('meta[name="theme-color"]').setAttribute('content', dark ? '#141516' : '#ECEBE7');
+    document.querySelectorAll('.theme-key').forEach(function (k) {
+      k.setAttribute('aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme');
+    });
+  }
+  function setTheme(t) { try { localStorage.setItem(THEME_KEY, t); } catch (e) { /* private mode */ } applyTheme(); }
+  darkQuery.addEventListener('change', function () { if (themePref() === 'system') { applyTheme(); } });
+  function themeKey(cls) {
+    return '<button class="key ghost theme-key' + (cls ? ' ' + cls : '') + '" type="button" data-action="toggle-theme" aria-label="' + (isDark() ? 'Switch to light theme' : 'Switch to dark theme') + '">' +
+      icon('moon', 'moon') + icon('sun', 'sun') + '</button>';
+  }
+
   /* ------------------------------------------------------------------ Icons (one 1.75 stroke family) */
   var I = {
     today: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
@@ -73,6 +94,8 @@
     pin: '<path d="M9 4h6l-1 5 3 3v1.5H7V12l3-3-1-5ZM12 13.5V20"/>',
     back: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
     check: '<path d="m6 12.5 4 4 8-9"/>',
+    moon: '<path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10Z"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>',
     trash: '<path d="M4.5 7h15M10 11v6M14 11v6M6.5 7l.8 11.6A2 2 0 0 0 9.3 20.5h5.4a2 2 0 0 0 2-1.9L17.5 7M9 7V5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5v2"/>'
   };
   function icon(name, cls) { return '<svg class="icon' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" aria-hidden="true">' + I[name] + '</svg>'; }
@@ -99,6 +122,7 @@
   function renderNav(cur) {
     document.getElementById('nav').innerHTML = ROUTES.map(function (r) { return navLink(r, cur); }).join('');
     document.getElementById('nav-foot').innerHTML = navLink(ALL[5], cur);
+    document.getElementById('rail-theme').innerHTML = themeKey();
     document.getElementById('tabbar').innerHTML = ROUTES.map(function (r) { return navLink(r, cur); }).join('');
   }
   function render(navigated) {
@@ -116,7 +140,7 @@
   /* ------------------------------------------------------------------ Shared pieces */
   function head(title, sub, action) {
     return '<header class="page-head"><div><h1>' + title + '</h1>' + (sub ? '<p class="sub">' + sub + '</p>' : '') + '</div>' +
-      '<div class="head-actions">' + (action || '') +
+      '<div class="head-actions">' + (action || '') + themeKey('narrow-only') +
       '<a class="key ghost narrow-only" href="#/settings" aria-label="Settings">' + icon('settings') + '</a></div></header>';
   }
   function del(action, id, what, ico) {
@@ -290,7 +314,12 @@
 
     settings: function () {
       var counts = [plural(S.tasks.length, 'task', 'tasks'), plural(S.habits.length, 'habit', 'habits'), plural(S.events.length, 'plan', 'plans'), plural(S.notes.length, 'note', 'notes')].join(', ');
+      var tp = themePref();
       return head('Settings') +
+        '<section class="panel"><h2 id="h-look">Appearance</h2><div class="segmented inline" role="group" aria-labelledby="h-look">' +
+          [['light', 'Light'], ['dark', 'Dark'], ['system', 'Match device']].map(function (o) {
+            return '<button type="button" data-action="set-theme" data-t="' + o[0] + '" aria-pressed="' + (tp === o[0]) + '">' + o[1] + '</button>';
+          }).join('') + '</div></section>' +
         '<section class="panel"><h2>Your data</h2><p>Everything is stored on this device only: ' + esc(counts) + '. Back up regularly, and use a backup to copy your data to another phone or computer.</p>' +
           '<div class="actions"><button class="btn" type="button" data-action="backup">Back up to a file</button>' +
           '<label class="btn ghost">Restore from a file<input type="file" accept="application/json,.json" data-input="restore" hidden></label></div></section>' +
@@ -410,6 +439,8 @@
       case 'delete-note':
         if (!confirm('Delete this note?')) return;
         remove(S.notes, id); save(); location.hash = '#/notes'; toast('Note deleted'); return;
+      case 'toggle-theme': setTheme(isDark() ? 'light' : 'dark'); if (route().name === 'settings') render(); return;
+      case 'set-theme': setTheme(b.getAttribute('data-t')); render(); return;
       case 'backup': backup(); return;
       case 'erase': if (!confirm('Erase all your tasks, habits, plans and notes on this device?')) return; S = EMPTY(); toast('Everything erased'); break;
       default: return;
@@ -478,6 +509,7 @@
   }
 
   window.addEventListener('hashchange', function () { render(true); window.scrollTo(0, 0); });
-  window.addEventListener('storage', function (e) { if (e.key === KEY) { S = load(); render(); } });
+  window.addEventListener('storage', function (e) { if (e.key === KEY) { S = load(); render(); } if (e.key === THEME_KEY) applyTheme(); });
+  applyTheme();
   render();
 })();

@@ -8,7 +8,7 @@ colors:
   sunk: "#F3F2EF"
   ink: "#1C1D1F"
   ink-2: "#57585B"
-  ink-3: "#6E6F72"
+  ink-3: "#67686B"
   tick: "#A9A9A6"
   ring: "#8A8A86"
   line: "#DEDCD6"
@@ -85,7 +85,7 @@ components:
     padding: "0 18px"
     height: "46px"
   button-primary-hover:
-    backgroundColor: "#2C2D30"
+    backgroundColor: "{colors.ink-hover}"
   button-ghost:
     backgroundColor: "{colors.panel}"
     textColor: "{colors.ink}"
@@ -109,7 +109,7 @@ components:
     rounded: "{rounded.round}"
     size: "50px"
   key-signal-hover:
-    backgroundColor: "#D44812"
+    backgroundColor: "{colors.signal-hover}"
   pill-button:
     backgroundColor: "{colors.panel}"
     textColor: "{colors.ink}"
@@ -205,6 +205,30 @@ A near-neutral warm-grey body with exactly two chromatic voices: signal orange a
 - **Hairline** (`line`): Panel edges, row dividers, the rail and tab-bar edges.
 - **Hairline Strong** (`line-2`): Input borders, pill outlines, link underlines.
 
+### Dark theme
+Light is the default. Settings → Appearance offers Light, Dark and Match device; a sun/moon key sits in the page header on the cover screen and at the foot of the rail when unfolded. The choice is stored per device (`lo:theme`) and applied before first paint.
+
+Every colour token is a `light-dark()` pair in `:root`; `<html data-theme>` sets `color-scheme`, which picks the side. Dark is graphite housing, the black-calculator side of the same world, not a new palette: the signal stays orange and done stays olive.
+
+| Token | Light | Dark |
+|---|---|---|
+| ground | #ECEBE7 | #141516 |
+| rail | #E3E2DD | #1A1B1D |
+| panel | #FBFBF9 | #202124 |
+| sunk | #F3F2EF | #18191B |
+| ink | #1C1D1F | #ECEBE7 |
+| ink-2 | #57585B | #ABABA7 |
+| ink-3 | #67686B | #8F8F8B |
+| tick | #A9A9A6 | #55565A |
+| ring | #8A8A86 | #75767A |
+| line / line-2 | #DEDCD6 / #CFCDC6 | #2D2E31 / #3B3C40 |
+| signal / signal-ink | #E5531A / #B8400F | #EE5D22 / #FF8E5E |
+| olive | #66743A | #76863F |
+| late | #B23B1E | #F2775A |
+| on-ink (text on ink buttons) | #FFFFFF | #141516 |
+
+Interaction tints (`ink-hover`, `signal-hover`, `danger`, `danger-hover`, `late-soft`, `hover-tint`, `rail-hover`) and shadow colours (`hl`, `shade`, `shade-soft`) are tokens too; no colour is written outside `:root`.
+
 ### Named Rules
 **The One Signal Rule.** Orange marks where "now" is and the single primary action on a screen; it is never a decorative accent, a heading colour or a panel fill. If two orange things compete on one screen, one of them is wrong.
 
@@ -268,7 +292,7 @@ Edges are hairlines (1px `line`), never heavier, except the 1.5px ring on empty 
 ### Buttons
 Firm, compact, and quiet until pressed.
 - **Shape:** 12px corners, 46px tall, 0 18px padding; 15px 600 label; icon 18px leading.
-- **Primary:** Graphite fill, white label; hover deepens to #2C2D30; press moves down 1px.
+- **Primary:** Graphite fill, white label; hover shifts to `ink-hover`; press moves down 1px.
 - **Ghost:** Panel fill, graphite label, hairline border and key shadow.
 - **Danger:** Late brick fill (hover #9A3017), used only for "Erase all data".
 - **Pill button:** 44px pill, 13px 500, panel fill with strong hairline; pressed state inverts to graphite with white text (the "Pinned" toggle, the "Today" return on the dial).

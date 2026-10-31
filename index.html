@@ -5,14 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#ECEBE7">
-  <meta name="color-scheme" content="light">
+  <meta name="color-scheme" content="light dark">
+  <script>
+    /* Apply the saved theme before first paint, so there is no flash of the wrong colours. */
+    (function () {
+      var t = 'light'; try { t = localStorage.getItem('lo:theme') || 'light'; } catch (e) {}
+      var dark = t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-theme', t);
+      document.documentElement.setAttribute('data-resolved', dark ? 'dark' : 'light');
+    })();
+  </script>
   <title>Life Organizer</title>
   <meta name="description" content="A private personal organizer for tasks, habits, plans and notes.">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="preload" href="schibsted-grotesk.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=5">
+  <link rel="stylesheet" href="styles.css?v=6">
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
@@ -20,12 +29,12 @@
     <aside class="rail" aria-label="Sections">
       <a class="brand" href="#/today" aria-label="Life Organizer, Today"><img src="logo.svg" alt="" width="32" height="32"><span>Life Organizer</span></a>
       <nav class="nav" id="nav" aria-label="Main"></nav>
-      <nav class="nav nav-foot" id="nav-foot" aria-label="Settings"></nav>
+      <div class="rail-foot"><span id="rail-theme"></span><nav class="nav" id="nav-foot" aria-label="Settings"></nav></div>
     </aside>
     <main id="main" class="main" tabindex="-1"></main>
   </div>
   <nav class="tabbar" id="tabbar" aria-label="Main"></nav>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=5"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>
