@@ -6,3 +6,5 @@ life-organizer-backup*.json
 # Design review captures
 .impeccable/review/
 .impeccable/questions/
+.impeccable/live/
+.impeccable/critique/
