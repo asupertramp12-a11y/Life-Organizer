@@ -38,6 +38,7 @@
   function parse(isoStr) { var p = isoStr.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
   function today() { return iso(new Date()); }
   function addDays(isoStr, n) { var d = parse(isoStr); d.setDate(d.getDate() + n); return iso(d); }
+  function monday(isoStr) { var dow = (parse(isoStr).getDay() + 6) % 7; return addDays(isoStr, -dow); }
   function fmt(isoStr, opts) { return parse(isoStr).toLocaleDateString('en-GB', opts); }
   function relDate(isoStr) {
     if (!isoStr) return '';
@@ -86,7 +87,7 @@
   ];
   var ALL = ROUTES.concat([{ id: 'settings', label: 'Settings' }]);
 
-  var state = { taskFilter: 'open', noteQuery: '', selDay: today(), weekStart: today() };
+  var state = { taskFilter: 'open', noteQuery: '', selDay: today(), weekStart: monday(today()) };
 
   function route() {
     var h = (location.hash || '#/today').replace(/^#\//, '').split('/');
@@ -165,12 +166,12 @@
     return '<div class="dial" style="--sel:' + sel + '">' +
       '<div class="dial-head"><span class="dial-range">' + esc(range) + '</span>' +
         '<span class="dial-nav"><button class="key ghost sm" type="button" data-action="week" data-n="-7" aria-label="Previous 7 days">' + icon('left') + '</button>' +
-        (state.weekStart !== t ? '<button class="pill-btn" type="button" data-action="week" data-n="0">Today</button>' : '') +
+        (state.weekStart !== monday(t) ? '<button class="pill-btn" type="button" data-action="week" data-n="0">Today</button>' : '') +
         '<button class="key ghost sm" type="button" data-action="week" data-n="7" aria-label="Next 7 days">' + icon('right') + '</button></span></div>' +
       '<div class="scale" role="group" aria-label="Choose a day">' +
         days.map(function (d) {
           var n = S.events.filter(function (e) { return e.date === d; }).length;
-          return '<button class="day' + (d === t ? ' is-today' : '') + '" type="button" data-action="pick-day" data-d="' + d + '" aria-pressed="' + (d === state.selDay) + '" aria-label="' + esc(fmt(d, { weekday: 'long', day: 'numeric', month: 'long' })) + (n ? ', ' + plural(n, 'plan', 'plans') : '') + '">' +
+          return '<button class="day' + (d === t ? ' is-today' : d < t ? ' is-past' : '') + '" type="button" data-action="pick-day" data-d="' + d + '" aria-pressed="' + (d === state.selDay) + '" aria-label="' + esc(fmt(d, { weekday: 'long', day: 'numeric', month: 'long' })) + (n ? ', ' + plural(n, 'plan', 'plans') : '') + '">' +
             '<span class="dots">' + (n ? '<i></i>'.repeat(Math.min(n, 3)) : '') + '</span>' +
             '<span class="dname">' + esc(fmt(d, { weekday: 'short' })) + '</span><span class="dnum">' + parse(d).getDate() + '</span></button>';
         }).join('') +
@@ -205,7 +206,7 @@
       return head(esc(fmt(t, { weekday: 'long', day: 'numeric', month: 'long' })), esc(sub)) +
         quickAdd() +
         '<div class="split">' +
-          '<section class="panel" aria-labelledby="h-agenda"><h2 id="h-agenda">Agenda</h2>' + dial() + '<div id="agenda">' + agenda(state.selDay) + '</div></section>' +
+          '<section class="panel" aria-labelledby="h-agenda"><h2 id="h-agenda" class="visually-hidden">Agenda</h2>' + dial() + '<div id="agenda">' + agenda(state.selDay) + '</div></section>' +
           '<div class="stack">' +
             (S.habits.length ? '<section class="panel" aria-labelledby="h-hab"><h2 id="h-hab">Habits</h2>' + habitList(1) + '</section>' : '') +
             '<section class="panel" aria-labelledby="h-notes"><div class="panel-head"><h2 id="h-notes">Notes</h2><a class="link" href="#/notes">All notes</a></div>' +
@@ -218,10 +219,7 @@
 
     plans: function () {
       var t = today();
-      var upcoming = S.events.filter(function (e) { return e.date >= t; }).sort(sortEvents);
       var past = S.events.filter(function (e) { return e.date < t; }).sort(sortEvents).reverse().slice(0, 8);
-      var groups = [], cur = null;
-      upcoming.forEach(function (e) { if (!cur || cur.date !== e.date) { cur = { date: e.date, items: [] }; groups.push(cur); } cur.items.push(e); });
       return head('Plans', 'Appointments, birthdays, trips: anything with a date.') +
         '<form class="compose" data-form="event" autocomplete="off">' +
           '<div class="quick"><label class="visually-hidden" for="pt">New plan</label>' +
@@ -232,16 +230,13 @@
             '<label class="field"><span>Time</span><input type="time" name="time"></label>' +
             '<label class="field wide"><span>Where</span><input name="place" placeholder="Optional"></label>' +
           '</div></details></form>' +
-        '<section class="panel" aria-labelledby="h-week"><h2 id="h-week">Week</h2>' + dial() + '<div id="agenda" data-plans-only>' + agenda(state.selDay, true) + '</div></section>' +
-        '<section class="panel" aria-labelledby="h-up"><h2 id="h-up">Coming up</h2>' +
-          (groups.length ? groups.map(function (g) {
-            var rel = relDate(g.date), named = rel === 'Today' || rel === 'Tomorrow';
-            return '<div class="date-group"><h3 class="date-label"><span class="big">' + parse(g.date).getDate() + '</span><span>' + esc(named ? rel : fmt(g.date, { weekday: 'long' })) + '<small>' + esc(fmt(g.date, { month: 'long', year: 'numeric' })) + '</small></span></h3>' +
-              '<ul class="list">' + g.items.map(eventRow).join('') + '</ul></div>';
-          }).join('') : empty('Nothing planned yet. Add your first plan above.')) + '</section>' +
-        (past.length ? '<section class="panel quiet" aria-labelledby="h-past"><h2 id="h-past">Recent</h2><ul class="list">' + past.map(function (e) {
-          return '<li class="row plan"><span class="time">' + esc(fmt(e.date, { day: 'numeric', month: 'short' })) + '</span><div class="row-body"><span class="row-title">' + esc(e.title) + '</span></div>' + del('delete-event', e.id, 'plan: ' + e.title) + '</li>';
-        }).join('') + '</ul></section>' : '');
+        '<div class="split plans-split">' +
+          '<section class="panel sticky" aria-labelledby="h-week"><h2 id="h-week" class="visually-hidden">Week</h2>' + dial() + '<div id="agenda" data-plans-only>' + agenda(state.selDay, true) + '</div></section>' +
+          '<div class="stack"><section class="panel" aria-labelledby="h-up"><h2 id="h-up">Coming up</h2><div id="upcoming">' + upcomingList() + '</div></section>' +
+          (past.length ? '<section class="panel quiet" aria-labelledby="h-past"><h2 id="h-past">Recent</h2><ul class="list">' + past.map(function (e) {
+            return '<li class="row plan"><span class="time">' + esc(fmt(e.date, { day: 'numeric', month: 'short' })) + '</span><div class="row-body"><span class="row-title">' + esc(e.title) + '</span></div>' + del('delete-event', e.id, 'plan: ' + e.title) + '</li>';
+          }).join('') + '</ul></section>' : '') + '</div>' +
+        '</div>';
     },
 
     notes: function (arg) {
@@ -303,6 +298,20 @@
         '<section class="panel"><h2>Start over</h2><p>Erase everything on this device. This can’t be undone, so back up first.</p><button class="btn danger" type="button" data-action="erase">Erase all data</button></section>';
     }
   };
+
+  /* Coming up: every future plan except the day tuned on the dial, which the Week panel already shows. */
+  function upcomingList() {
+    var t = today(), groups = [], cur = null;
+    S.events.filter(function (e) { return e.date >= t && e.date !== state.selDay; }).sort(sortEvents).forEach(function (e) {
+      if (!cur || cur.date !== e.date) { cur = { date: e.date, items: [] }; groups.push(cur); } cur.items.push(e);
+    });
+    if (!groups.length) return empty(S.events.some(function (e) { return e.date >= t; }) ? 'Nothing else planned.' : 'Nothing planned yet. Add your first plan above.');
+    return groups.map(function (g) {
+      var rel = relDate(g.date), named = rel === 'Today' || rel === 'Tomorrow';
+      return '<div class="date-group"><h3 class="date-label"><span class="big">' + parse(g.date).getDate() + '</span><span>' + esc(named ? rel : fmt(g.date, { weekday: 'long' })) + '<small>' + esc(fmt(g.date, { month: 'long', year: 'numeric' })) + '</small></span></h3>' +
+        '<ul class="list">' + g.items.map(eventRow).join('') + '</ul></div>';
+    }).join('');
+  }
 
   function planPrompt(d) { return 'Add a plan for ' + (d === today() ? 'today' : relDate(d) === 'Tomorrow' ? 'tomorrow' : fmt(d, { weekday: 'short', day: 'numeric', month: 'short' })); }
 
@@ -372,7 +381,7 @@
   /* Select a day, moving the 7-day window so the day is on the dial. */
   function selectDay(d) {
     state.selDay = d;
-    if (weekDays().indexOf(d) < 0) state.weekStart = (d >= today() && d <= addDays(today(), 6)) ? today() : d;
+    state.weekStart = monday(d);
   }
 
   document.addEventListener('click', function (ev) {
@@ -390,8 +399,8 @@
       case 'pick-day': pickDay(b); return;
       case 'week':
         var n = +b.getAttribute('data-n');
-        state.weekStart = n ? addDays(state.weekStart, n) : today();
-        state.selDay = n ? state.weekStart : today();
+        state.weekStart = n ? addDays(state.weekStart, n) : monday(today());
+        state.selDay = n ? (weekDays().indexOf(today()) > -1 ? today() : state.weekStart) : today();
         render(); return;
       case 'new-note':
         ev.preventDefault();
@@ -419,6 +428,8 @@
     if (ag) { ag.innerHTML = agenda(d, ag.hasAttribute('data-plans-only')); ag.style.animation = 'none'; void ag.offsetWidth; ag.style.animation = ''; }
     var dateInput = document.querySelector('[data-form="event"] input[name="date"]');
     if (dateInput) dateInput.value = d;
+    var up = document.getElementById('upcoming');
+    if (up) up.innerHTML = upcomingList();
     var titleInput = document.getElementById('pt');
     if (titleInput) titleInput.placeholder = planPrompt(d);
   }
