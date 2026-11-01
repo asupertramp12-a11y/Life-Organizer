@@ -7,7 +7,7 @@
 
   /* ------------------------------------------------------------------ Storage */
   var KEY = 'lo:data:v1';
-  var APP_VERSION = '24';
+  var APP_VERSION = '26';
   var EMPTY = function () { return { v: 1, tasks: [], habits: [], events: [], notes: [], ack: {}, cats: { byId: {}, byTitle: {} } }; };
 
   function normalise(d) {
@@ -256,11 +256,6 @@
     return '<h3 class="agenda-day">' + esc(label) + '</h3>' + (body || empty('Nothing planned. <button class="link inline" type="button" data-action="new-plan" data-d="' + day + '">Add a plan</button>'));
   }
 
-  /* The week dial: a tuning scale with a needle on the selected day, labelled with that day's count. */
-  function tipText(d) {
-    var n = shown().filter(function (e) { return occursOn(e, d); }).length;
-    return n ? plural(n, 'plan', 'plans') : 'Free';
-  }
   function weekDays() { var out = []; for (var i = 0; i < 7; i++) out.push(addDays(state.weekStart, i)); return out; }
   function weekRange(days) {
     var first = parse(days[0]), last = parse(days[6]);
@@ -273,23 +268,7 @@
       (state.weekStart !== monday(today()) ? '<button class="pill-btn" type="button" data-action="week" data-n="0">This week</button>' : '') +
       '<button class="key ghost sm" type="button" data-action="week" data-n="7" aria-label="Next week">' + icon('right') + '</button></span>';
   }
-  function dial() {
-    var days = weekDays(), t = today();
-    var sel = days.indexOf(state.selDay); if (sel < 0) { sel = 0; state.selDay = days[0]; }
-    return '<div class="dial" style="--sel:' + sel + '">' +
-      '<div class="dial-head"><h2 class="dial-range">' + esc(weekRange(days)) + '</h2>' + weekNav() + '</div>' +
-      '<div class="scale" role="group" aria-label="Choose a day">' +
-        days.map(function (d) {
-          var dayEvs = shown().filter(function (e) { return occursOn(e, d); });
-          var fd = flagsOn(d), clash = fd.some(function (f) { return f.sev === 'clash'; });
-          return '<button class="day' + (d === t ? ' is-today' : d < t ? ' is-past' : '') + (clash ? ' has-clash' : fd.length ? ' has-check' : '') + '" type="button" data-action="pick-day" data-d="' + d + '" aria-pressed="' + (d === state.selDay) + '"' +
-            ' aria-label="' + esc(fmt(d, { weekday: 'long', day: 'numeric', month: 'long' })) + ', ' + plural(dayEvs.length, 'plan', 'plans') + (fd.length ? ', ' + plural(fd.length, 'flag', 'flags') : '') + '">' +
-            '<span class="dots">' + cats().filter(function (c) { return dayEvs.some(function (e) { return catOf(e) === c.id; }); }).map(function (c) { return catDot(c.id); }).join('') + '</span>' +
-            '<span class="dname">' + esc(fmt(d, { weekday: 'short' })) + '</span><span class="dnum">' + parse(d).getDate() + '</span></button>';
-        }).join('') +
-        '<span class="needle" aria-hidden="true"><span class="tip">' + esc(tipText(state.selDay)) + '</span></span>' +
-      '</div></div>';
-  }
+
 
   /* ------------------------------------------------------------------ Linked apps (read-only)
      The XP app and the Health app are served from the same web address as this app, so their
@@ -632,7 +611,7 @@
   /* Week by person: a row per day, a lane per category, so overlaps line up side by side. */
   function weekLanes() {
     var days = weekDays(), t = today(), cs = cats().filter(function (c) { return !LINKS.hideCat[c.id]; }), evs = shown();
-    var headRow = '<div class="lane-row lane-head" style="--lanes:' + cs.length + '"><span></span>' + cs.map(function (c) { return '<span>' + catDot(c.id) + esc(c.label) + '</span>'; }).join('') + '</div>';
+    var headRow = '<div class="lane-row lane-head" style="--lanes:' + cs.length + '"><span></span>' + cs.map(function (c) { return '<span class="cat-' + c.id + '">' + catDot(c.id) + esc(c.label) + '</span>'; }).join('') + '</div>';
     var rows = days.map(function (d) {
       var on = evs.filter(function (e) { return occursOn(e, d); }).sort(byTimeOfDay);
       return '<div class="lane-row' + (d === t ? ' is-today' : '') + (d < t ? ' is-past' : '') + dayFlags(d) + '" style="--lanes:' + cs.length + '">' +
@@ -928,17 +907,7 @@
       body + sortedList() +
       '<p class="hint">Clash: two things can’t both happen as planned. Check: probably fine, worth a moment’s thought.</p>';
   }
-  /* A compact preview for The Hub: the soonest group, one line each. */
-  function headsUpPreview() {
-    var gs = soonGroups();
-    if (!gs.length) return '<section class="panel hu-preview"><div class="panel-head"><h2>Heads up</h2><a class="link" href="#/headsup">Open</a></div><p class="all-clear-line">' + icon('check', 'tiny') + 'All clear for the next 7 days</p></section>';
-    return '<section class="panel hu-preview"><div class="panel-head"><h2>Heads up</h2><a class="link" href="#/headsup">See all</a></div><p class="meta hu-count">' + esc(soonWords('in the next 7 days')) + '</p><ul class="list">' +
-      gs.slice(0, 3).map(function (g) {
-        var f = g.flags[0];
-        return '<li class="row"><a class="row-main" href="#/headsup">' + flagTag(g.sev) + '<span class="row-title">' + esc(g.title || f.title) + '</span>' +
-          '<span class="meta">' + esc(fmt(g.first, { weekday: 'short', day: 'numeric', month: 'short' })) + ' · ' + esc(untilLabel(g.first)) + (g.flags.length > 1 ? ' · ' + plural(g.flags.length, 'item', 'items') : '') + '</span></a></li>';
-      }).join('') + '</ul></section>';
-  }
+
 
   /* ------------------------------------------------------------------ The Hub: now and next */
   function nowNext() {
@@ -954,8 +923,8 @@
     return '<section class="nownext" aria-label="Now and next">' +
       line('Now', cur ? catDot(catOf(cur)) + esc(cur.title) : 'Free', cur ? 'until ' + hhmm(window_(cur)[1]) : '', cur ? 'data-action="open-plan" data-id="' + esc(cur.id) + '"' : '') +
       line('Next', next ? catDot(catOf(next)) + esc(next.title) : 'Nothing else today', next ? esc(next.time) + ' · ' + (inMin < 60 ? 'in ' + inMin + ' min' : 'in ' + Math.round(inMin / 60) + ' h') : '', next ? 'data-action="open-plan" data-id="' + esc(next.id) + '"' : '') +
-      (due.length ? line('To do', plural(due.length, 'to-do due', 'to-dos due'), due.some(function (x) { return x.due < t; }) ? '<span class="late">Overdue</span>' : 'today', 'data-action="go" data-to="thoughts"') : '') +
-      line('Heads up', top ? flagTag(top.sev) + esc(top.title || top.flags[0].title) : icon('check', 'tiny') + 'All clear this week', top ? esc(untilLabel(top.first)) : '', 'data-action="go" data-to="headsup"') +
+      (!state.inBento && due.length ? line('To do', plural(due.length, 'to-do due', 'to-dos due'), due.some(function (x) { return x.due < t; }) ? '<span class="late">Overdue</span>' : 'today', 'data-action="go" data-to="thoughts"') : '') +
+      (state.inBento ? '' : line('Heads up', top ? flagTag(top.sev) + esc(top.title || top.flags[0].title) : icon('check', 'tiny') + 'All clear this week', top ? esc(untilLabel(top.first)) : '', 'data-action="go" data-to="headsup"')) +
     '</section>';
   }
   function quickAdd() {
@@ -1015,20 +984,87 @@
         '<div id="note-results">' + thoughtResults(open && open.id) + '</div></div>' +
       '<div class="notes-editor">' + (open ? noteEditor(open) : '<div class="editor-empty"><p>' + (arg ? 'That note no longer exists.' : 'Pick a note, or start a new one.') + '</p></div>') + '</div></div>';
   }
+  /* ------------------------------------------------------------------ The Hub: a dashboard of your life
+     A graphite Now / Next card, a Heads up tile, a To do tile, one coloured tile per person, a week
+     chart of who has what on, and Thoughts. Tiles open the right place in Calendar or the other tabs. */
+  function upcomingFor(c) {
+    var t = today(), m = nowMins();
+    return shown().filter(function (e) { return catOf(e) === c && lastDay(e) >= t; }).sort(sortEvents)
+      .filter(function (e) { return !(e.date === t && e.time && window_(e)[1] <= m && lastDay(e) === t); });
+  }
+  function personTile(c) {
+    var t = today(), wk = addDays(t, 6);
+    var todays = shown().filter(function (e) { return catOf(e) === c.id && occursOn(e, t); }).sort(byTimeOfDay);
+    var week = shown().filter(function (e) { return catOf(e) === c.id && e.date <= wk && lastDay(e) >= t; }).length;
+    var next = upcomingFor(c.id).filter(function (e) { return !isBlock(e) && !isAway(e) && !isLeave(e); })[0];
+    var flagged = soonGroups().some(function (g) { return g.flags.some(function (f) { return f.sev === 'clash' && f.ids.some(function (id) { var e = findEvent(id); return e && catOf(e) === c.id; }); }); });
+    var big = String(todays.length), unit = todays.length === 1 ? 'plan today' : 'plans today';
+    if (c.id === 'work') {
+      var leave = todays.filter(isLeave)[0], away = todays.filter(isAway)[0], mt = todays.filter(function (e) { return e.time && !isLeave(e) && !isAway(e); });
+      if (leave) { big = 'Off'; unit = leave.title; }
+      else if (mt.length) { big = mt.map(function (e) { return e.time; }).sort()[0] + '–' + hhmm(Math.max.apply(null, mt.map(function (e) { return window_(e)[1]; }))); unit = (away ? 'Away · ' + away.title.replace(/\s*\(work\)/i, '') + ' · ' : '') + plural(mt.filter(function (e) { return !isBlock(e); }).length, 'meeting', 'meetings'); }
+      else if (away) { big = 'Away'; unit = away.title.replace(/\s*\(work\)/i, ''); }
+      else { big = 'Free'; unit = 'no work today'; }
+    }
+    var nextLine = next ? '<b>' + esc(next.date === t ? (next.time || 'Today') : fmt(next.date, { weekday: 'short' }) + (next.time ? ' ' + next.time : '')) + '</b> ' + esc(next.title) : 'Nothing coming up';
+    return '<button class="tile person cat-' + c.id + (c.id === 'work' ? ' wide' : '') + '" type="button" data-action="go-week" data-c="' + c.id + '">' +
+      '<span class="tile-top">' + catDot(c.id) + '<span class="tile-name">' + esc(c.id === 'personal' ? 'You' : c.label) + '</span>' + (flagged ? '<span class="tile-flag" role="img" aria-label="has a clash in the next 7 days"></span>' : '') + '</span>' +
+      '<span class="tile-big">' + esc(big) + '</span><span class="tile-unit">' + esc(unit) + '</span>' +
+      '<span class="tile-next">' + (next ? 'Next: ' : '') + nextLine + '</span>' +
+      '<span class="tile-foot">' + plural(week, 'plan', 'plans') + ' in the next 7 days</span></button>';
+  }
+  function alertTile() {
+    var c = soonClashes(), k = soonCount() - c, top = soonGroups()[0];
+    return '<a class="tile alert' + (c ? '' : ' calm') + '" href="#/headsup">' +
+      '<span class="tile-top">' + icon('bell', 'tiny') + '<span class="tile-name">Heads up</span></span>' +
+      '<span class="tile-big">' + (c || k ? c : '✓') + '</span><span class="tile-unit">' + (c || k ? (c === 1 ? 'clash' : 'clashes') + (k ? ' · ' + plural(k, 'check', 'checks') : '') : 'all clear') + '</span>' +
+      '<span class="tile-next">' + (top ? esc(top.title || top.flags[0].title) : 'Nothing needs a decision this week') + '</span>' +
+      '<span class="tile-foot">next 7 days</span></a>';
+  }
+  function todoTile() {
+    var t = today(), due = S.tasks.filter(function (x) { return !x.done && x.due && x.due <= t; }).sort(sortTasks);
+    var open = S.tasks.filter(function (x) { return !x.done; }).length;
+    return '<section class="tile todo-tile" aria-label="To do"><a class="tile-top" href="#/thoughts">' + icon('tasks', 'tiny') + '<span class="tile-name">To do</span></a>' +
+      '<span class="tile-big">' + due.length + '</span><span class="tile-unit">' + (due.length === 1 ? 'due' : 'due') + (due.some(function (x) { return x.due < t; }) ? ' · <span class="late">overdue</span>' : '') + '</span>' +
+      (due.length ? '<ul class="list mini">' + due.slice(0, 2).map(taskRow).join('') + '</ul>' : '<span class="tile-next">' + plural(open, 'open to-do', 'open to-dos') + ', none due</span>') + '</section>';
+  }
+  /* This week: a column per day, stacked by who has what on, red marker on clash days. */
+  function weekChart() {
+    var t = today(), days = [], cs = cats().filter(function (c) { return !LINKS.hideCat[c.id]; }), max = 1;
+    for (var i = 0; i < 7; i++) days.push(addDays(t, i));
+    var cols = days.map(function (d) {
+      var on = shown().filter(function (e) { return occursOn(e, d); });
+      var seg = cs.map(function (c) {
+        var n = on.filter(function (e) { return catOf(e) === c.id && !isBlock(e); }).length;
+        return { c: c.id, n: c.id === 'work' ? Math.min(n, 4) : n, real: n };   // work counts cap so family stays visible
+      });
+      var total = seg.reduce(function (s2, x) { return s2 + x.n; }, 0); if (total > max) max = total;
+      return { d: d, seg: seg, total: total, real: on.length };
+    });
+    return '<section class="tile chart" aria-labelledby="h-wk"><div class="tile-top"><span class="tile-name" id="h-wk">The next 7 days</span><span class="chart-key">' +
+        cs.map(function (c) { return '<span>' + catDot(c.id) + esc(c.id === 'personal' ? 'You' : c.label) + '</span>'; }).join('') + '</span></div>' +
+      '<div class="bars">' + cols.map(function (col) {
+        var fl = dayFlags(col.d);
+        return '<button class="bar-col' + (col.d === t ? ' is-today' : '') + fl + '" type="button" data-action="go-day" data-d="' + col.d + '" aria-label="' + esc(fmt(col.d, { weekday: 'long', day: 'numeric', month: 'long' })) + ', ' + plural(col.real, 'plan', 'plans') + (fl.indexOf('clash') > -1 ? ', has a clash' : '') + '">' +
+          '<span class="stack-bar">' + col.seg.filter(function (x) { return x.n; }).map(function (x) {
+            return '<i class="cat-' + x.c + '" style="flex-grow:' + x.n + '"></i>'; }).join('') + '<span class="spacer" style="flex-grow:' + (max - col.total) + '"></span></span>' +
+          '<span class="bar-day">' + esc(col.d === t ? 'Today' : fmt(col.d, { weekday: 'short' })) + '</span><span class="bar-num">' + parse(col.d).getDate() + '</span></button>';
+      }).join('') + '</div></section>';
+  }
+  function notesTile() {
+    var notes = S.notes.slice().sort(noteOrder).slice(0, 2);
+    return '<section class="tile notes-tile" aria-label="Thoughts"><a class="tile-top" href="#/thoughts">' + icon('notes', 'tiny') + '<span class="tile-name">Thoughts</span></a>' +
+      (notes.length ? '<ul class="list mini">' + notes.map(noteLine).join('') + '</ul>' : '<span class="tile-next">No notes yet</span>') + '</section>';
+  }
+  function greeting() { var h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; }
 
   /* ------------------------------------------------------------------ Views */
   var VIEWS = {
     hub: function () {
-      var t = today(), due = S.tasks.filter(function (x) { return !x.done && x.due && x.due <= t; }).length, n = soonCount();
-      var sub = [plural(due, 'to-do due', 'to-dos due'), soonWords('in the next 7 days')].join(' · ');
-      var notes = S.notes.slice().sort(noteOrder).slice(0, 3);
-      return head(esc(fmt(t, { weekday: 'long', day: 'numeric', month: 'long' })), esc(sub)) + nowNext() + quickAdd() +
-        '<div class="split">' +
-          '<section class="panel" aria-label="Agenda">' + dial() + '<div id="agenda">' + agendaList(state.selDay, true) + '</div></section>' +
-          '<div class="stack">' + headsUpPreview() +
-            '<section class="panel"><div class="panel-head"><h2>Thoughts</h2><a class="link" href="#/thoughts">All</a></div>' +
-              (notes.length ? '<ul class="list">' + notes.map(noteLine).join('') + '</ul>' : empty('No notes yet.')) + '</section>' +
-          '</div></div>';
+      var t = today();
+      var people = cats().filter(function (c) { return !LINKS.hideCat[c.id]; });
+      return head(esc(greeting()), esc(fmt(t, { weekday: 'long', day: 'numeric', month: 'long' }))) +
+        '<div class="bento">' + (state.inBento = true, nowNext()) + (state.inBento = false, '') + alertTile() + todoTile() + people.map(personTile).join('') + weekChart() + notesTile() + '</div>' + quickAdd();
     },
     calendar: function () { return calendarView(); },
     thoughts: function (arg) { return thoughtsView(arg); },
@@ -1169,13 +1205,14 @@
       case 'close-sheet': closeSheet(); flushRefresh(); return;
       case 'open-work': state.openWork[b.getAttribute('data-d')] = true; render(); return;
       case 'close-work': delete state.openWork[b.getAttribute('data-d')]; render(); return;
-      case 'pick-day': pickDay(b); return;
       case 'lane-day': selectDay(b.getAttribute('data-d')); state.calMode = 'month'; state.calMonth = state.selDay.slice(0, 7); render(); return;
       case 'week':
         var n = +b.getAttribute('data-n');
         state.weekStart = n ? addDays(state.weekStart, n) : monday(today());
         state.selDay = weekDays().indexOf(today()) > -1 ? today() : state.weekStart;
         render(); return;
+      case 'go-week': state.calMode = 'week'; state.weekStart = monday(today()); location.hash = '#/calendar'; return;
+      case 'go-day': selectDay(b.getAttribute('data-d')); state.calMode = 'month'; state.calMonth = state.selDay.slice(0, 7); location.hash = '#/calendar'; return;
       case 'open-sorter': openSheet(sorterSheet()); return;
       case 'sort-cat':
         S.cats.byTitle[b.getAttribute('data-t')] = b.getAttribute('data-c'); save(); linkedCache = null; flagCache = null;
@@ -1240,17 +1277,7 @@
   });
   document.addEventListener('close', function (ev) { if (ev.target === sheet()) flushRefresh(); }, true);
 
-  /* Picking a day moves the needle in place (so it glides) and swaps only the agenda. */
-  function pickDay(b) {
-    var d = b.getAttribute('data-d');
-    state.selDay = d;
-    var dialEl = b.closest('.dial');
-    dialEl.style.setProperty('--sel', weekDays().indexOf(d));
-    dialEl.querySelectorAll('.day').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
-    var tip = dialEl.querySelector('.tip'); if (tip) tip.textContent = tipText(d);
-    var ag = document.getElementById('agenda');
-    if (ag) { ag.innerHTML = agendaList(d, true); ag.style.animation = 'none'; void ag.offsetWidth; ag.style.animation = ''; }
-  }
+
 
   var savedTimer;
   document.addEventListener('input', function (ev) {

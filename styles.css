@@ -868,3 +868,115 @@ button.nn-row { cursor: pointer; }
   .cat-pick .segmented button { padding: 0 10px; }
 }
 @container (max-width: 420px) { .lane-row { grid-template-columns: 40px repeat(var(--lanes), minmax(0, 1fr)); } .lane-ev { font-size: 11px; padding: 3px 4px; } .lane-head span { font-size: 11px; padding: 8px 3px; } .lane-head .cat-dot { margin-right: 3px; } }
+
+/* ================================================================ The Hub as a dashboard, with more colour
+   Tiles carry a confident tint of their person's colour; big numbers use a deepened shade of it that
+   keeps AA contrast on the tint. Now / Next is the graphite anchor. */
+:root {
+  --tile-tint: 17%;
+  --deep-mix: 62%;   /* how much category colour goes into the big numbers (rest is ink) */
+}
+:root[data-resolved="dark"] { --tile-tint: 24%; --deep-mix: 80%; }
+
+.bento { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: var(--s4); grid-auto-flow: dense; }
+@container (min-width: 640px) { .bento { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; } }
+
+.tile {
+  position: relative; display: grid; align-content: start; gap: 2px; min-width: 0; padding: 14px 16px 16px; margin: 0;
+  border-radius: 22px; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  font: inherit; text-align: left; text-decoration: none; cursor: pointer; box-shadow: 0 14px 30px -24px var(--shade);
+  transition: transform .15s var(--ease), box-shadow .2s var(--ease);
+}
+button.tile:hover, a.tile:hover { transform: translateY(-1px); box-shadow: 0 18px 34px -22px var(--shade); }
+button.tile:active, a.tile:active { transform: translateY(0) scale(.99); }
+section.tile { cursor: default; }
+.tile-top { display: flex; align-items: center; gap: 7px; min-height: 24px; color: inherit; text-decoration: none; font-size: 14px; font-weight: 600; }
+.tile-top .cat-dot { margin: 0; width: 10px; height: 10px; }
+.tile-top .icon { width: 16px; height: 16px; }
+.tile-name { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tile-big { font-size: 40px; font-weight: 300; letter-spacing: -.035em; line-height: 1.05; margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile-unit { font-size: 13.5px; font-weight: 600; color: var(--ink-2); min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tile-next { margin-top: 10px; font-size: 14px; line-height: 1.35; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tile-next b { font-weight: 700; }
+.tile-foot { margin-top: 6px; font-size: 12.5px; color: var(--ink-2); }
+.tile-flag { margin-left: auto; flex: none; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--late); color: #fff; }
+
+/* People tiles: tinted with their colour */
+.tile.person { background: color-mix(in srgb, var(--c) var(--tile-tint), var(--panel)); border-color: color-mix(in srgb, var(--c) 34%, var(--line)); }
+.tile.person .tile-big { color: color-mix(in srgb, var(--c) var(--deep-mix), var(--ink)); }
+.tile.person .tile-name { color: color-mix(in srgb, var(--c) 45%, var(--ink)); }
+.tile.person.wide { grid-column: span 2; }
+.tile.person.wide .tile-big { font-size: 34px; }
+
+/* Now / Next: the graphite anchor */
+.bento .nownext {
+  grid-column: 1 / -1; margin: 0; padding: 6px 18px; border-radius: 22px;
+  background: var(--ink); color: var(--on-ink); border: 0; -webkit-backdrop-filter: none; backdrop-filter: none;
+  box-shadow: 0 20px 40px -26px var(--shade);
+}
+.bento .nn-row { border-top-color: color-mix(in srgb, var(--on-ink) 14%, transparent); color: var(--on-ink); }
+.bento .nn-label { color: color-mix(in srgb, var(--on-ink) 62%, transparent); }
+.bento .nn-sub { color: color-mix(in srgb, var(--on-ink) 70%, transparent); }
+.bento .nn-sub .late { color: #FF9C84; }
+.bento .nn-main .tag { background: transparent; color: var(--on-ink); border-color: color-mix(in srgb, var(--on-ink) 30%, transparent); }
+@container (min-width: 640px) { .bento .nownext { grid-column: span 2; grid-template-columns: 1fr; } .bento .nn-row:nth-child(2) { border-top: 1px solid color-mix(in srgb, var(--on-ink) 14%, transparent); } }
+
+/* Heads up tile: brick when there are clashes, olive when all clear */
+.tile.alert { background: color-mix(in srgb, var(--late) 13%, var(--panel)); border-color: color-mix(in srgb, var(--late) 32%, var(--line)); }
+.tile.alert .tile-big, .tile.alert .tile-top { color: var(--late); }
+.tile.alert.calm { background: color-mix(in srgb, var(--olive) 14%, var(--panel)); border-color: color-mix(in srgb, var(--olive) 30%, var(--line)); }
+.tile.alert.calm .tile-big, .tile.alert.calm .tile-top { color: var(--olive); }
+
+/* To do tile */
+.todo-tile .tile-big { color: var(--ink); }
+.list.mini { margin-top: 8px; }
+.list.mini .row { min-height: 44px; padding: 4px 0; gap: 10px; }
+.list.mini .check { width: 24px; height: 24px; }
+.list.mini .row-title { font-size: 14px; }
+.list.mini .meta { font-size: 12px; }
+.notes-tile { grid-column: 1 / -1; }
+@container (min-width: 640px) { .notes-tile { grid-column: span 2; } }
+
+/* The next 7 days chart */
+.tile.chart { grid-column: 1 / -1; }
+.chart-key { margin-left: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 10px; font-size: 12px; font-weight: 500; color: var(--ink-2); }
+.chart-key span { display: inline-flex; align-items: center; }
+.chart-key .cat-dot { width: 7px; height: 7px; margin-right: 4px; }
+.bars { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.bar-col { position: relative; display: grid; justify-items: center; gap: 2px; padding: 0; border: 0; background: none; font: inherit; color: var(--ink); cursor: pointer; }
+.stack-bar { display: flex; flex-direction: column-reverse; width: 100%; max-width: 34px; height: 120px; border-radius: 10px; overflow: hidden; background: var(--sunk); gap: 2px; }
+.stack-bar i { display: block; background: var(--c); min-height: 6px; }
+.stack-bar .spacer { background: transparent; }
+.bar-day { margin-top: 6px; font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.bar-num { font-size: 15px; font-weight: 500; }
+.bar-col.is-today .bar-day, .bar-col.is-today .bar-num { color: var(--signal-ink); font-weight: 700; }
+.bar-col.has-clash::before { content: ""; position: absolute; top: -10px; left: 50%; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; background: var(--late); box-shadow: 0 0 0 2px var(--panel); }
+.bar-col.has-check::before { content: ""; position: absolute; top: -10px; left: 50%; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: var(--ring); }
+.bar-col:hover .stack-bar { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* Quick add sits under the dashboard */
+.bento + .quick { margin-top: 4px; }
+
+/* More colour elsewhere: tinted Heads up headers, coloured lane heads */
+.hu-group { padding-top: 0; overflow: hidden; }
+.hu-head { margin: 0 -16px; padding: 14px 16px 12px; background: color-mix(in srgb, var(--late) 10%, var(--panel)); border-bottom-color: color-mix(in srgb, var(--late) 22%, var(--line)); }
+.hu-group:has(.hu-head .tag.chk) .hu-head { background: var(--sunk); border-bottom-color: var(--line); }
+.hu-group > .list:first-child { padding-top: 6px; }
+.lane-head span { color: color-mix(in srgb, var(--c, var(--ink-2)) 55%, var(--ink)); }
+.lane-head span:nth-child(n+2) { background: color-mix(in srgb, var(--c) 14%, transparent); }
+.tile.person .tile-unit, .tile.person .tile-foot, .tile.alert .tile-unit, .tile.alert .tile-foot { color: color-mix(in srgb, var(--ink) 78%, var(--c, var(--late))); }
+.tile.alert.calm .tile-unit, .tile.alert.calm .tile-foot { color: color-mix(in srgb, var(--ink) 78%, var(--olive)); }
+
+/* Tightening: clash dot on person tiles, wrapping chart key, lean mini lists */
+.tile-flag { width: 10px; height: 10px; padding: 0; border-radius: 50%; box-shadow: 0 0 0 3px color-mix(in srgb, var(--late) 22%, transparent); }
+.tile.chart .tile-top { flex-wrap: wrap; row-gap: 6px; }
+@media (max-width: 599px) { .tile.chart .chart-key { margin-left: 0; width: 100%; justify-content: flex-start; } }
+.list.mini .meta .tag { display: none; }
+.list.mini .row-main { padding: 2px 0; }
+@container (min-width: 640px) { .bento .nownext { align-content: center; } }
+@container (min-width: 640px) {
+  .bento .nownext { grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px; padding: 8px 22px; }
+  .bento .nn-row:nth-child(2) { border-top: 0; }
+  .bento .nn-main { font-size: 17px; }
+  .notes-tile { grid-column: 1 / -1; }
+}

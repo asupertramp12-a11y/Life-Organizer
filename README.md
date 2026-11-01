@@ -2,7 +2,7 @@
 
 A private personal organizer that runs in your browser and can be added to your phone's home screen like an app.
 
-- **The Hub**: Now / Next (what's on now, what's next, what's due, the most urgent heads-up), a quick to-do box, the week dial and the day's merged agenda with a now-line. Work meetings fold into one line unless they clash.
+- **The Hub**: a dashboard of your life. A graphite Now / Next band, a Heads up tile (clashes and checks this week), a To do tile you can tick from, one coloured tile per person (Work, You, Douglas, Dorothea, Ames) with today's count, what's next and the week ahead, a 7-day chart of who has what on, and Thoughts. Tap a tile to jump to the right place.
 - **Calendar**: Month, Week (a lane per category) and a 14-day Agenda, colour-coded by who each plan is for: **Work** (blue: Outlook and anything labelled work), **Personal** (violet: just you: walks, haircuts, your own appointments), **Douglas** (green), **Dorothea** (amber) and **Ames** (rose). Douglas's planner items follow their "who" ("Mum" shows as Ames), Health app items go to Dorothea, and titles naming a child go to that child. **Sort categories** lists each family title once so you can assign it in one tap; any plan's sheet has **Who's it for?** too. Tap a category chip to show or hide it.
 - **Thoughts**: to-dos and notes in one place. To-dos with a date appear in The Hub; notes save as you type.
 - **Heads up**: clashes and preplanning, grouped by cause, each with a decision (who's covering, declined, done). Flags cover family plans while you're away, work during leave or on bank holidays, double-booked meetings, two things at once, deadlines and birthdays. Decisions can be undone from Sorted.

@@ -178,9 +178,9 @@ The interface is light by commitment; a dark, moody look is out. The system reje
 - One self-hosted geometric sans (Urbanist) at weights 300 to 700; times in fixed-width columns.
 - The week dial: a Monday-to-Sunday tuning scale with an orange needle on the selected day.
 
-## Structure and signals (Version 21)
+## Structure and signals (Version 26)
 
-- **Four tabs:** The Hub (Now / Next, the week dial and the day's merged agenda), Calendar (Month, Week with one lane per category, 14-day Agenda), Thoughts (to-dos and notes; dated to-dos appear in The Hub) and Heads up (clashes and preplanning). Settings sits under the gear in the header and the rail. Older addresses (#/today, #/plans, #/notes, #/tasks, #/habits) redirect.
+- **Four tabs:** The Hub (a dashboard: graphite Now / Next band, Heads up and To do tiles, a tinted tile per person with a big number in a deepened shade of their colour, a stacked 7-day chart, Thoughts; the week dial is retired), Calendar (Month, Week with one lane per category, 14-day Agenda), Thoughts (to-dos and notes; dated to-dos appear in The Hub) and Heads up (clashes and preplanning). Settings sits under the gear in the header and the rail. Older addresses (#/today, #/plans, #/notes, #/tasks, #/habits) redirect.
 - **Surfaces:** glass belongs to the frame (sky, Now / Next, tab bar, rail, chips, capture field). Panels that hold lists, the note editor and the sheet are solid `--panel` with a `--line` hairline.
 - **Five categories by person:** Work (blue), Personal (violet, just the owner), Douglas (green), Dorothea (amber) and Ames (rose, `--c-amy`), matched in lightness so none dominates. Ames's plans raise soft Checks, not Clashes, when the owner is working or away.
 - **One meaning per signal:** orange is "now" only: the now-line in today's agenda and today's date (`--signal-ink` disc in the month grid, white text, AA). Clash and Check are graphite tags with a small dot (brick for Clash, ring grey for Check). Graphite fill means "do" (add keys, primary buttons) or "you are here" (current navigation item). Selection is white with a graphite edge. Switches are graphite when on. Olive still means done only.
