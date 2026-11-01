@@ -980,3 +980,58 @@ section.tile { cursor: default; }
   .bento .nn-main { font-size: 17px; }
   .notes-tile { grid-column: 1 / -1; }
 }
+
+/* ================================================================ Shopping lists */
+.list-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: var(--s2); }
+.list-card {
+  display: grid; gap: 6px; padding: 14px 16px; border-radius: 18px; text-decoration: none; color: var(--ink); text-align: left;
+  background: color-mix(in srgb, var(--olive) 12%, var(--panel)); border: 1px solid color-mix(in srgb, var(--olive) 28%, var(--line)); font: inherit; cursor: pointer;
+}
+.list-card.new { place-items: center; display: flex; gap: 8px; justify-content: center; background: transparent; border-style: dashed; color: var(--ink-2); font-weight: 600; min-height: 76px; }
+.lc-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.lc-top b { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.lc-top span { font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: 13px; font-weight: 600; }
+.sp-bar { display: block; height: 8px; border-radius: 4px; background: color-mix(in srgb, var(--olive) 18%, var(--sunk)); overflow: hidden; }
+.sp-bar i { display: block; height: 100%; border-radius: 4px; background: var(--olive); transition: width .35s var(--ease); }
+.mini-card { margin: 8px 0 4px; }
+
+.shop-head { align-items: center; }
+.back-link { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; color: var(--ink-2); text-decoration: none; font-weight: 600; font-size: 14px; }
+.list-name { font-size: clamp(28px, 7vw, 36px); font-weight: 500; letter-spacing: -.02em; border: 0; background: none; padding: 0; min-height: 48px; box-shadow: none !important; }
+.shop-progress {
+  position: sticky; top: max(8px, env(safe-area-inset-top)); z-index: 3; margin-bottom: var(--s3); padding: 12px 16px; border-radius: 18px;
+  background: var(--ink); color: var(--on-ink); box-shadow: 0 14px 30px -20px var(--shade);
+}
+.shop-progress .sp-text { font-size: 15px; margin-bottom: 8px; }
+.shop-progress .sp-text b { font-size: 22px; font-weight: 600; }
+.shop-progress .sp-bar { background: color-mix(in srgb, var(--on-ink) 18%, transparent); }
+.shop-progress .sp-bar i { background: color-mix(in srgb, var(--olive) 70%, var(--on-ink)); }
+.shop-progress.all-done { background: var(--olive); color: #fff; }
+.shop-tools { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: var(--s3); }
+.shop-add select { width: auto; flex: none; max-width: 34%; min-height: 54px; border-radius: 27px; padding: 0 34px 0 14px; font-size: 14px; }
+.shop-paste.hidden { display: none; }
+.shop-paste textarea { min-height: 140px; font-size: 15px; line-height: 1.5; }
+
+.shop-sec { background: var(--panel); border: 1px solid var(--line); border-radius: 22px; padding: 4px 14px 6px; margin-bottom: 12px; box-shadow: var(--shadow-panel); }
+.shop-sec h3 { display: flex; justify-content: space-between; align-items: baseline; margin: 10px 2px 2px; font-size: 16px; font-weight: 600; }
+.shop-sec h3 span { font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.shop-sec.complete { opacity: .7; }
+.shop-sec.complete h3 span { color: var(--olive); font-weight: 700; }
+.shop-item { display: flex; align-items: center; gap: 12px; min-height: 60px; border-top: 1px solid var(--line); }
+.shop-sec li:first-child { border-top: 0; }
+.tick {
+  flex: none; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border-radius: 50%; cursor: pointer;
+  border: 2px solid var(--ring); background: var(--panel); color: transparent; transition: background-color .15s var(--ease), transform .12s var(--ease);
+}
+.tick .icon { width: 22px; height: 22px; stroke-width: 2.6; }
+.tick:active { transform: scale(.9); }
+.tick[aria-pressed="true"] { background: var(--olive); border-color: var(--olive); color: #fff; }
+.shop-name { flex: 1; min-width: 0; min-height: 52px; padding: 0; border: 0; background: none; font: inherit; font-size: 17px; font-weight: 500; text-align: left; color: var(--ink); cursor: pointer; overflow-wrap: anywhere; }
+.shop-item.done .shop-name { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--tick); font-weight: 400; }
+.qty { flex: none; display: inline-flex; align-items: center; border: 1px solid var(--line-2); border-radius: 999px; background: var(--sunk); }
+.qty button { width: 40px; height: 40px; display: grid; place-items: center; border: 0; background: none; font: inherit; font-size: 20px; font-weight: 500; color: var(--ink); cursor: pointer; padding: 0; }
+.qty button .icon { width: 15px; height: 15px; color: var(--ink-2); }
+.qty b { min-width: 20px; text-align: center; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.shop-item.done .qty { opacity: .55; }
+.trolley-label { list-style: none; padding: 10px 2px 2px; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--olive); border-top: 1px solid var(--line); }
+.shop-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: var(--s4) 0; }

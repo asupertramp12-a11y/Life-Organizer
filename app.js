@@ -7,8 +7,8 @@
 
   /* ------------------------------------------------------------------ Storage */
   var KEY = 'lo:data:v1';
-  var APP_VERSION = '26';
-  var EMPTY = function () { return { v: 1, tasks: [], habits: [], events: [], notes: [], ack: {}, cats: { byId: {}, byTitle: {} } }; };
+  var APP_VERSION = '27';
+  var EMPTY = function () { return { v: 1, tasks: [], habits: [], events: [], notes: [], lists: [], ack: {}, cats: { byId: {}, byTitle: {} } }; };
 
   function normalise(d) {
     var base = EMPTY();
@@ -17,6 +17,7 @@
     base.habits.forEach(function (h) { if (!h.log || typeof h.log !== 'object') h.log = {}; });
     base.ack = d.ack && typeof d.ack === 'object' ? d.ack : {};   // dismissed clash flags
     var c = d.cats && typeof d.cats === 'object' ? d.cats : {};     // who each plan is for: by plan, or by title
+    base.lists = Array.isArray(d.lists) ? d.lists.filter(function (l) { return l && Array.isArray(l.items); }) : [];   // shopping lists
     base.cats = { byId: c.byId && typeof c.byId === 'object' ? c.byId : {}, byTitle: c.byTitle && typeof c.byTitle === 'object' ? c.byTitle : {} };
     return base;
   }
@@ -154,6 +155,7 @@
     renderNav(r.name);
     var main = document.getElementById('main');
     main.innerHTML = VIEWS[r.name](r.arg);
+    wake(r.name === 'thoughts' && /^list-/.test(r.arg));
     main.querySelectorAll('input[data-input="merge"]').forEach(function (inp) {   // listen on the button itself too
       inp.addEventListener('change', function () { takeFile(inp); });
       inp.addEventListener('cancel', function () { pickingSince = 0; importStatus('No file chosen.'); flushRefresh(); });
@@ -940,12 +942,105 @@
     return '<li class="row note-line"><a class="row-main" href="#/thoughts/' + n.id + '"><span class="row-title">' + (n.pinned ? icon('pin', 'tiny') : '') + esc(n.title || 'Untitled') + '</span>' +
       '<span class="meta">' + esc(relDate(n.updated.slice(0, 10))) + (notePreview(n) ? ' · ' + esc(notePreview(n)) : '') + '</span></a></li>';
   }
+  /* ------------------------------------------------------------------ Shopping lists (in Thoughts)
+     Paste a list ("Fruit & veg: broccoli, onions" lines, bullets, or one item per line), then shop it:
+     big ticks, a quantity on every item, sections in your order, ticked items sink to "In the trolley",
+     the screen stays awake. Lists are kept for next time: Untick all resets one. */
+  function shopList(id) { return S.lists.filter(function (l) { return l.id === id; })[0]; }
+  function shopStats(l) { var n = l.items.length, d = l.items.filter(function (i) { return i.done; }).length; return { n: n, d: d, pct: n ? Math.round(d / n * 100) : 0 }; }
+  function parseQty(raw) {
+    var s = raw.trim().replace(/^[-•*·▪◦]\s*/, '').replace(/\s+/g, ' '), q = 1, m;
+    if ((m = s.match(/^(\d{1,3})\s*(x|×)?\s+(.+)$/i))) { q = +m[1]; s = m[3]; }
+    else if ((m = s.match(/^(.+?)\s*(x|×)\s*(\d{1,3})$/i))) { q = +m[3]; s = m[1]; }
+    return { name: s.replace(/[.;]+$/, '').trim(), qty: Math.max(1, Math.min(q, 99)) };
+  }
+  /* "Section: a, b, c" lines; "Section:" headings followed by bullets; or plain lines. */
+  function parseShopping(text) {
+    var out = [], section = 'Other';
+    text.replace(/\r/g, '').split('\n').forEach(function (line) {
+      var l = line.replace(/\*\*/g, '').trim();
+      if (!l || /^(short version|if you want|shopping list)\b/i.test(l)) return;
+      var m = l.match(/^([^:,]{2,40}):\s*(.*)$/);
+      if (m) { section = m[1].replace(/^[-•*·]\s*/, '').trim(); l = m[2]; if (!l) return; }
+      l.split(/,|;/).forEach(function (part) {
+        var p = parseQty(part);
+        if (p.name && p.name.length < 80) out.push({ id: uid(), name: p.name, qty: p.qty, section: section, done: false });
+      });
+    });
+    return out;
+  }
+  function sectionsOf(l) {
+    var order = [];
+    l.items.forEach(function (i) { if (order.indexOf(i.section) < 0) order.push(i.section); });
+    return order;
+  }
+  function shopItem(l, i) {
+    return '<li class="shop-item' + (i.done ? ' done' : '') + '">' +
+      '<button class="tick" type="button" data-action="shop-tick" data-l="' + l.id + '" data-id="' + i.id + '" aria-pressed="' + !!i.done + '" aria-label="' + (i.done ? 'Put back: ' : 'In the trolley: ') + esc(i.name) + '">' + icon('check') + '</button>' +
+      '<button class="shop-name" type="button" data-action="shop-tick" data-l="' + l.id + '" data-id="' + i.id + '" tabindex="-1">' + esc(i.name) + '</button>' +
+      '<span class="qty" role="group" aria-label="Quantity of ' + esc(i.name) + '">' +
+        '<button type="button" data-action="shop-qty" data-l="' + l.id + '" data-id="' + i.id + '" data-n="-1" aria-label="One fewer">' + (i.qty > 1 ? '−' : icon('x', 'tiny')) + '</button>' +
+        '<b aria-live="polite">' + i.qty + '</b>' +
+        '<button type="button" data-action="shop-qty" data-l="' + l.id + '" data-id="' + i.id + '" data-n="1" aria-label="One more">+</button></span></li>';
+  }
+  function shopView(id) {
+    var l = shopList(id);
+    if (!l) return head('Shopping') + '<section class="panel">' + empty('That list no longer exists. <a href="#/thoughts">Back to Thoughts</a>') + '</section>';
+    var st = shopStats(l), secs = sectionsOf(l);
+    var body = !l.items.length ? '' : secs.map(function (sec) {
+      var items = l.items.filter(function (i) { return i.section === sec; });
+      var left = items.filter(function (i) { return !i.done; }), got = items.filter(function (i) { return i.done; });
+      if (l.hideDone && !left.length) return '';
+      return '<section class="shop-sec' + (!left.length ? ' complete' : '') + '"><h3>' + esc(sec) + '<span>' + got.length + '/' + items.length + '</span></h3><ul class="list">' +
+        left.map(function (i) { return shopItem(l, i); }).join('') +
+        (!l.hideDone && got.length ? '<li class="trolley-label">In the trolley</li>' + got.map(function (i) { return shopItem(l, i); }).join('') : '') + '</ul></section>';
+    }).join('');
+    var sections = secs.length ? secs : ['Other'];
+    return '<header class="page-head shop-head"><div><a class="back-link" href="#/thoughts">' + icon('back', 'tiny') + 'Thoughts</a>' +
+        '<label class="visually-hidden" for="ln">List name</label><input id="ln" class="list-name" value="' + esc(l.name) + '" data-input="list-name" data-l="' + l.id + '"></div>' +
+        '<div class="head-actions">' + themeKey('narrow-only') + '</div></header>' +
+      '<div class="shop-progress' + (st.n && st.d === st.n ? ' all-done' : '') + '"><div class="sp-text"><b>' + st.d + '</b> of ' + st.n + ' in the trolley' +
+        (st.n && st.d === st.n ? ' · all done' : ' · ' + (st.n - st.d) + ' to go') + '</div><div class="sp-bar"><i style="width:' + st.pct + '%"></i></div></div>' +
+      '<div class="shop-tools"><button class="pill-btn" type="button" data-action="shop-hide" data-l="' + l.id + '" aria-pressed="' + !!l.hideDone + '">Hide ticked</button>' +
+        '<button class="pill-btn" type="button" data-action="shop-paste-open">Paste items</button></div>' +
+      '<form class="quick shop-add" data-form="shop-add" data-l="' + l.id + '" autocomplete="off"><label class="visually-hidden" for="si">Add an item</label>' +
+        '<input id="si" name="title" placeholder="Add item" required>' +
+        '<label class="visually-hidden" for="ss">Section</label><select id="ss" name="section">' + sections.map(function (sc) { return '<option' + (sc === (state.lastSection || sections[0]) ? ' selected' : '') + '>' + esc(sc) + '</option>'; }).join('') + '</select>' +
+        '<button class="key signal" type="submit" aria-label="Add item">' + icon('plus') + '</button></form>' +
+      '<form class="panel shop-paste' + (state.pasteOpen || !l.items.length ? '' : ' hidden') + '" data-form="shop-paste" data-l="' + l.id + '">' +
+        '<label class="field wide"><span>Paste your list</span><textarea name="text" rows="6" placeholder="Fruit &amp; veg: broccoli, onions, peppers&#10;Bakery: bread, crumpets&#10;Eggs: 12 eggs"></textarea></label>' +
+        '<p class="hint">One section per line with a colon, items separated by commas. A number in front or “x2” after sets the quantity.</p>' +
+        '<button class="btn" type="submit">Add these items</button></form>' +
+      (body || (l.items.length ? '<section class="panel all-clear">' + icon('check') + '<h2>All in the trolley</h2><p>Untick all to use this list again next time.</p></section>' : '')) +
+      (l.items.length ? '<div class="shop-foot"><button class="btn ghost" type="button" data-action="shop-untick" data-l="' + l.id + '">Untick all</button>' +
+        '<button class="btn ghost" type="button" data-action="shop-clear" data-l="' + l.id + '">Clear ticked</button>' +
+        '<button class="link danger-text" type="button" data-action="shop-delete" data-l="' + l.id + '">Delete list</button></div>' : '');
+  }
+  function listCards() {
+    return '<h2 class="band">Shopping <span>' + S.lists.length + '</span></h2><div class="list-cards">' +
+      S.lists.map(function (l) {
+        var st = shopStats(l);
+        return '<a class="list-card" href="#/thoughts/list-' + l.id + '"><span class="lc-top"><b>' + esc(l.name) + '</b><span>' + st.d + '/' + st.n + '</span></span>' +
+          '<span class="sp-bar"><i style="width:' + st.pct + '%"></i></span><span class="meta">' + (st.n ? (st.n - st.d ? (st.n - st.d) + ' to get' : 'All done') : 'Empty: paste a list') + '</span></a>';
+      }).join('') +
+      '<button class="list-card new" type="button" data-action="new-list">' + icon('plus', 'tiny') + 'New shopping list</button></div>';
+  }
+  /* Keep the screen on while shopping. */
+  var wakeLock = null;
+  function wake(on) {
+    try {
+      if (on && !wakeLock && navigator.wakeLock) navigator.wakeLock.request('screen').then(function (w) { wakeLock = w; w.addEventListener('release', function () { wakeLock = null; }); }).catch(function () {});
+      if (!on && wakeLock) { wakeLock.release(); wakeLock = null; }
+    } catch (e) { /* not supported */ }
+  }
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && /^list-/.test(route().arg)) wake(true); });
+
   function thoughtResults(openId) {
     var q = state.query.toLowerCase(), hit = function (s) { return !q || s.toLowerCase().indexOf(q) > -1; };
     var open = S.tasks.filter(function (x) { return !x.done && hit(x.title + ' ' + (x.list || '')); }).sort(sortTasks);
     var done = S.tasks.filter(function (x) { return x.done && hit(x.title); });
     var notes = S.notes.filter(function (n) { return hit(n.title + ' ' + n.body); }).sort(noteOrder);
-    var html = '<h2 class="band">To do <span>' + open.length + '</span></h2>' +
+    var html = (q ? '' : listCards()) + '<h2 class="band">To do <span>' + open.length + '</span></h2>' +
       (open.length ? '<ul class="list todo">' + open.map(taskRow).join('') + '</ul>' : empty(q ? 'No to-dos match.' : 'Nothing to do. Add one above.')) +
       (done.length ? '<details class="done-list"' + (state.showDone ? ' open' : '') + '><summary data-action="toggle-done">Done · ' + done.length + '</summary><ul class="list">' + done.map(taskRow).join('') + '</ul>' +
         '<button class="link" type="button" data-action="clear-done">Clear done to-dos</button></details>' : '') +
@@ -967,6 +1062,7 @@
       '<label class="visually-hidden" for="nb">Note</label><textarea id="nb" placeholder="Write anything…" data-input="note-body" data-id="' + n.id + '">' + esc(n.body) + '</textarea></div>';
   }
   function thoughtsView(arg) {
+    if (/^list-/.test(arg)) return shopView(arg.slice(5));
     var open = arg ? byId(S.notes, arg) : null;
     var lists = Array.from(new Set(S.tasks.map(function (x) { return x.list; }).filter(Boolean))).sort();
     var openCount = S.tasks.filter(function (x) { return !x.done; }).length;
@@ -1053,7 +1149,9 @@
   }
   function notesTile() {
     var notes = S.notes.slice().sort(noteOrder).slice(0, 2);
+    var active = S.lists.filter(function (l) { var st = shopStats(l); return st.n && st.d < st.n; })[0];
     return '<section class="tile notes-tile" aria-label="Thoughts"><a class="tile-top" href="#/thoughts">' + icon('notes', 'tiny') + '<span class="tile-name">Thoughts</span></a>' +
+      (active ? '<a class="list-card mini-card" href="#/thoughts/list-' + active.id + '"><span class="lc-top"><b>' + icon('tasks', 'tiny') + esc(active.name) + '</b><span>' + shopStats(active).d + '/' + shopStats(active).n + '</span></span><span class="sp-bar"><i style="width:' + shopStats(active).pct + '%"></i></span></a>' : '') +
       (notes.length ? '<ul class="list mini">' + notes.map(noteLine).join('') + '</ul>' : '<span class="tile-next">No notes yet</span>') + '</section>';
   }
   function greeting() { var h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; }
@@ -1158,8 +1256,23 @@
     ev.preventDefault();
     if (kind === 'ics-url') { fetchICS(form.elements.url.value); return; }
     var f = Object.fromEntries(new FormData(form));
+    if (kind === 'shop-paste') f.title = 'paste';   // the paste box has no title field
     var title = (f.title || '').trim();
     if (!title) { toast('Type something first'); return; }
+    if (kind === 'shop-paste' || kind === 'shop-add') {
+      var sl = shopList(form.getAttribute('data-l')); if (!sl) return;
+      if (kind === 'shop-add') {
+        var pq = parseQty(title); state.lastSection = f.section || 'Other';
+        sl.items.push({ id: uid(), name: pq.name, qty: pq.qty, section: state.lastSection, done: false }); save(); render();
+        var si = document.getElementById('si'); if (si) si.focus(); return;
+      }
+      if (kind === 'shop-paste') {
+        var got = parseShopping(f.text || '');
+        if (!got.length) { toast('Nothing to add: paste a list first'); return; }
+        sl.items = sl.items.concat(got); state.pasteOpen = false; save(); render(); toast('Added ' + plural(got.length, 'item', 'items')); return;
+      }
+      return;
+    }
     if (kind === 'quick-task') { S.tasks.push({ id: uid(), title: title, due: today(), priority: 2, done: false, created: today() }); save(); render(); toast('Added to today'); return; }
     if (kind === 'task') { S.tasks.push({ id: uid(), title: title, due: f.due || '', priority: 2, list: (f.list || '').trim(), done: false, created: today() }); save(); render(); toast('Added'); return; }
     if (kind === 'save-task') {
@@ -1245,6 +1358,22 @@
       case 'undo':
         if (!undoSnap) return;
         S = normalise(JSON.parse(undoSnap)); undoSnap = null; save(); render(); toast('Undone'); return;
+      case 'new-list':
+        var nl = { id: uid(), name: 'Shopping', items: [], created: today() }; S.lists.unshift(nl); save(); location.hash = '#/thoughts/list-' + nl.id; return;
+      case 'shop-tick':
+        var tl = shopList(b.getAttribute('data-l')), ti = tl && tl.items.filter(function (x) { return x.id === id; })[0]; if (!ti) return;
+        ti.done = !ti.done; if (navigator.vibrate && ti.done) navigator.vibrate(12); break;
+      case 'shop-qty':
+        var ql = shopList(b.getAttribute('data-l')), qi = ql && ql.items.filter(function (x) { return x.id === id; })[0]; if (!qi) return;
+        if (qi.qty + +b.getAttribute('data-n') < 1) { change('Removed ' + qi.name, function () { ql.items = ql.items.filter(function (x) { return x !== qi; }); }); return; }
+        qi.qty = Math.min(99, qi.qty + +b.getAttribute('data-n')); break;
+      case 'shop-hide': var hl = shopList(b.getAttribute('data-l')); if (hl) hl.hideDone = !hl.hideDone; break;
+      case 'shop-paste-open': state.pasteOpen = !state.pasteOpen; render(); var ta = document.querySelector('.shop-paste textarea'); if (ta && state.pasteOpen) ta.focus(); return;
+      case 'shop-untick': var ul = shopList(b.getAttribute('data-l')); if (ul) change('All unticked', function () { ul.items.forEach(function (x) { x.done = false; }); }); return;
+      case 'shop-clear': var cl = shopList(b.getAttribute('data-l')); if (cl) change('Ticked items cleared', function () { cl.items = cl.items.filter(function (x) { return !x.done; }); }); return;
+      case 'shop-delete':
+        var dl = b.getAttribute('data-l');
+        undoSnap = JSON.stringify(S); S.lists = S.lists.filter(function (x) { return x.id !== dl; }); save(); location.hash = '#/thoughts'; toast('List deleted', true); return;
       case 'new-note':
         ev.preventDefault();
         var note = { id: uid(), title: '', body: '', updated: new Date().toISOString(), pinned: false };
@@ -1282,6 +1411,7 @@
   var savedTimer;
   document.addEventListener('input', function (ev) {
     var el = ev.target, k = el.getAttribute('data-input');
+    if (k === 'list-name') { var ln = shopList(el.getAttribute('data-l')); if (ln) { ln.name = el.value.trim() || 'Shopping'; save(); } return; }
     if (k === 'note-search') {
       state.query = el.value;
       document.getElementById('note-results').innerHTML = thoughtResults(route().arg);
