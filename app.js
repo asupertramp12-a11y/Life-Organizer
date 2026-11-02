@@ -278,6 +278,9 @@
      on every draw. Douglas's family planner can also be fetched from its Firebase store for the
      weeks ahead, using the family code the XP app saved on this device. */
   var LINKS_KEY = 'lo:links:v1';
+  // XP.apiKey is the XP app's public Firebase web key, not a secret: browsers have to receive it.
+  // Access is controlled by the Firestore rules and the key's restrictions in Google Cloud.
+  // Keep it in step with FIREBASE_CONFIG in the XP app.
   var XP = { shared: 'douglasSharedV1', family: 'douglasFamilyCode', project: 'douglas-battle-pass', apiKey: 'AIzaSyCdS-73Pb77tgIZGskEU3MlyPac6BIT9l0' };
   var DH = { data: 'dh:data:v1', notes: 'dh:notes:v1' };
   var OTHER_ADULTS = /^(mum|ames|nanny)$/i;
